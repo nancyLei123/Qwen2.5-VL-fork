@@ -1,3 +1,19 @@
+# PD Insighter Research Code
+
+The `pd-insighter/research-20261103` branch contains the current PD Insighter
+analysis scripts, dashboard templates, tests, and supporting source code.
+Recordings, annotations, saved results, and trained scenes remain in restricted
+OneDrive storage, not in this branch.
+
+**Start here:** [PD Insighter setup](PD_INSIGHTER.md) |
+[OneDrive data locations](docs/reproduction/DATA_LOCATIONS.md).
+
+The original Qwen README and attribution are preserved below. This research
+application uses additional components with their own licenses; see
+[supporting source](support/README.md). It is not a clinically validated system.
+
+---
+
 # Qwen2.5-VL
 
 

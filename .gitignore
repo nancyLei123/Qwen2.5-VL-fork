@@ -90,3 +90,44 @@ environment.yaml
 
 # Large directories to be cleaned up
 to_be_cleaned/
+
+# PD Insighter research data is distributed separately through restricted OneDrive.
+/runs/
+/pd_insighter_demo/
+/render_*/
+/support/workspace/**/data/
+node_modules/
+.venvs/
+.pytest_cache/
+.relocation_originals/
+relocation_report.json
+.env.*
+*.vrs
+*.vrs.*
+*.MP4
+*.MOV
+*.wav
+*.m4a
+*.ply
+*.splat
+*.ksplat
+*.obj
+*.glb
+*.gltf
+*.zip
+*.tar.gz
+*.docx
+*.pdf
+*.pem
+*.key
+*.lic
+
+# Private meeting notes and one-off reports are not application source.
+/FUCHS_MEETING_RECORD_*
+/HENRY_FUCHS_TALK_MEETING_PREP.md
+/NTRIAL_PROGRESS_RECORD_*
+/PROGRESS_REPORT_*
+/PROJECT_HANDOFF_MEMORY_*
+/RAW_PARAMETER_PLOTS_EMAIL_DRAFT.md
+/storage_cleanup_audit_*
+/scripts/build_ntrial_progress_record_doc.py

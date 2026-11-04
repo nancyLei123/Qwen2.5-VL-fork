@@ -1,0 +1,399 @@
+cmake_minimum_required(VERSION 3.21)
+project(opensplat)
+
+set(OPENSPLAT_BUILD_SIMPLE_TRAINER OFF CACHE BOOL "Build simple trainer applications")
+if(APPLE)
+    set(GPU_RUNTIME_DEFAULT "MPS")
+else()
+    set(GPU_RUNTIME_DEFAULT "CUDA")
+endif()
+set(GPU_RUNTIME "${GPU_RUNTIME_DEFAULT}" CACHE STRING "HIP or CUDA or MPS or CPU")
+set(OPENCV_DIR "OPENCV_DIR-NOTFOUND" CACHE PATH "Path to the OPENCV installation directory")
+set(OPENSPLAT_MAX_CUDA_COMPATIBILITY OFF CACHE BOOL "Build for maximum CUDA device compatibility")
+set(OPENSPLAT_BUILD_VISUALIZER OFF CACHE BOOL "Build visualizer application")
+set(OPENSPLAT_USE_FAST_MATH OFF CACHE BOOL "Enable fast math optimizations for GPU kernels (-use_fast_math / -ffast-math)")
+set(OPENSPLAT_USE_PCH ON CACHE BOOL "Use precompiled headers to speed up compilation")
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+# Read version
+file(READ "VERSION" APP_VERSION)
+string(STRIP "${APP_VERSION}" APP_VERSION)
+
+# Read git commit
+set(GIT_REV "")
+execute_process(COMMAND git rev-parse --short HEAD
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" 
+                OUTPUT_VARIABLE GIT_REV 
+                ERROR_QUIET)
+string(REGEX REPLACE "\n$" "" GIT_REV "${GIT_REV}")
+if (NOT "${GIT_REV}" STREQUAL "")
+    set(DAPP_VERSION "${APP_VERSION} (git commit ${GIT_REV})")
+    set(DAPP_REVISION "${GIT_REV}")
+else()
+    set(DAPP_VERSION "${APP_VERSION}")
+    set(DAPP_REVISION "dev")
+endif()
+
+message("OpenSplat Version: ${DAPP_VERSION}")
+add_compile_options("-DAPP_VERSION=\"${DAPP_VERSION}\"")
+add_compile_options("-DAPP_REVISION=\"${DAPP_REVISION}\"")
+
+# Suppress warning #20012-D (nvcc and glm)
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -diag-suppress=20012)
+if(OPENSPLAT_USE_FAST_MATH)
+    message(STATUS "Fast math optimizations enabled for CUDA")
+    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --use_fast_math)
+endif()
+
+# Vendor deps
+add_library(nlohmann_json INTERFACE)
+add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
+target_include_directories(nlohmann_json INTERFACE ${PROJECT_SOURCE_DIR}/vendor)
+
+add_library(nanoflann INTERFACE)
+add_library(nanoflann::nanoflann ALIAS nanoflann)
+target_include_directories(nanoflann INTERFACE ${PROJECT_SOURCE_DIR}/vendor/nanoflann)
+
+add_library(cxxopts INTERFACE)
+add_library(cxxopts::cxxopts ALIAS cxxopts)
+target_include_directories(cxxopts INTERFACE ${PROJECT_SOURCE_DIR}/vendor/cxxopts)
+
+add_library(tinyglm INTERFACE)
+target_include_directories(tinyglm INTERFACE ${PROJECT_SOURCE_DIR}/vendor/tinyglm)
+
+add_subdirectory(vendor/miniz)
+add_subdirectory(vendor/zstd)
+add_subdirectory(vendor/spz)
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
+endif()
+
+if(GPU_RUNTIME STREQUAL "CUDA")
+    find_package(CUDAToolkit)
+    if (NOT CUDAToolkit_FOUND)
+        message(WARNING "CUDA toolkit not found, building with CPU support only")
+        set(GPU_RUNTIME "CPU")
+    else()
+        if (OPENSPLAT_MAX_CUDA_COMPATIBILITY)
+            execute_process(COMMAND "${CUDAToolkit_NVCC_EXECUTABLE}" --list-gpu-arch 
+                    OUTPUT_VARIABLE LIST_GPU_ARCH 
+                    ERROR_QUIET)
+        endif()
+
+        if(NOT LIST_GPU_ARCH AND OPENSPLAT_MAX_CUDA_COMPATIBILITY)
+            message(WARNING "Cannot compile for max CUDA compatibility, nvcc does not support --list-gpu-arch")
+            SET(OPENSPLAT_MAX_CUDA_COMPATIBILITY OFF)
+        endif()
+        if(NOT OPENSPLAT_MAX_CUDA_COMPATIBILITY)
+            if(NOT CMAKE_CUDA_ARCHITECTURES)
+                SET(CMAKE_CUDA_ARCHITECTURES 75;80)
+            endif()
+        else()
+            # Build for maximum compatibility
+            # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+            set(CMAKE_CUDA_ARCHITECTURES "")
+
+            # Extract list of arch and gencodes
+            string(REPLACE "\r" "" LIST_GPU_ARCH ${LIST_GPU_ARCH})
+            string(REPLACE "\n" ";" LIST_GPU_ARCH ${LIST_GPU_ARCH})
+
+            execute_process(COMMAND "${CUDAToolkit_NVCC_EXECUTABLE}" --list-gpu-code 
+                OUTPUT_VARIABLE LIST_GPU_CODE 
+                ERROR_QUIET)
+            string(REPLACE "\r" "" LIST_GPU_CODE ${LIST_GPU_CODE})
+            string(REPLACE "\n" ";" LIST_GPU_CODE ${LIST_GPU_CODE})
+
+            list(GET LIST_GPU_CODE 0 TARGET_GPU_CODE)
+            set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=${TARGET_GPU_CODE}")
+            
+            set(IDX 0)
+            foreach(GPU_ARCH ${LIST_GPU_ARCH})
+                string(REGEX MATCH "compute_([0-9]+)" GPU_ARCH_VERSION "${GPU_ARCH}")
+                list(APPEND CMAKE_CUDA_ARCHITECTURES "${CMAKE_MATCH_1}")
+                list(GET LIST_GPU_CODE ${IDX} GPU_CODE)
+                set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=${GPU_ARCH},code=${GPU_CODE}")
+                math(EXPR IDX "${IDX}+1")
+            endforeach()
+            message("Set CUDA flags: " ${CMAKE_CUDA_FLAGS})
+        endif()
+        # Set torch cuda architecture list
+        set(TORCH_CUDA_ARCH_LIST ${CMAKE_CUDA_ARCHITECTURES})
+        list(TRANSFORM TORCH_CUDA_ARCH_LIST REPLACE "^([0-9])([0-9])$" "\\1.\\2")
+        list(TRANSFORM TORCH_CUDA_ARCH_LIST REPLACE "^([0-9][0-9])([0-9])$" "\\1.\\2")
+        string(REPLACE ";" " " TORCH_CUDA_ARCH_LIST "${TORCH_CUDA_ARCH_LIST}")
+        message(STATUS "** Updated TORCH_CUDA_ARCH_LIST to ${TORCH_CUDA_ARCH_LIST} **")
+    endif()
+elseif(GPU_RUNTIME STREQUAL "HIP")
+    set(USE_HIP ON CACHE BOOL "Use HIP for GPU acceleration")
+
+    if(NOT DEFINED HIP_PATH)
+        if(NOT DEFINED ENV{HIP_PATH})
+            set(HIP_PATH "/opt/rocm/hip" CACHE PATH "Path to which HIP has been installed")
+        else()
+            set(HIP_PATH $ENV{HIP_PATH} CACHE PATH "Path to which HIP has been installed")
+        endif()
+    endif()
+    set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+    find_package(HIP REQUIRED)
+    if(OPENSPLAT_USE_FAST_MATH)
+        message(STATUS "Fast math optimizations enabled for HIP")
+        set(CMAKE_HIP_FLAGS ${CMAKE_HIP_FLAGS} -ffast-math)
+    endif()
+
+    file(GLOB_RECURSE GSPLAT_GPU_SRC LIST_DIRECTORIES False rasterizer/gsplat/*.cu)
+    set_source_files_properties(${GSPLAT_GPU_SRC} PROPERTIES LANGUAGE HIP)
+
+    if(WIN32)
+        set(ROCM_ROOT "$ENV{HIP_PATH}" CACHE PATH "Root directory of the ROCm installation")
+    else()
+        set(ROCM_ROOT "/opt/rocm" CACHE PATH "Root directory of the ROCm installation")
+    endif()
+    list(APPEND CMAKE_PREFIX_PATH "${ROCM_ROOT}")
+elseif(GPU_RUNTIME STREQUAL "MPS")
+    set(OPENSPLAT_PRECOMPILED_METALLIB "" CACHE FILEPATH "Existing Metal library for an unchanged shader source")
+    set(OPENSPLAT_PRECOMPILED_SOURCE_SHA256 "" CACHE STRING "SHA256 of shader source used for the existing library")
+    set(OPENSPLAT_METAL_COMPILER "" CACHE FILEPATH
+        "Optional path to the Metal compiler (used when xcrun cannot locate the downloaded toolchain)")
+    set(OPENSPLAT_METALLIB_COMPILER "" CACHE FILEPATH
+        "Optional path to the metallib compiler (used when xcrun cannot locate the downloaded toolchain)")
+
+    if(OPENSPLAT_METAL_COMPILER)
+        set(METAL_COMPILER_COMMAND "${OPENSPLAT_METAL_COMPILER}")
+    else()
+        set(METAL_COMPILER_COMMAND xcrun -sdk macosx metal)
+    endif()
+    if(OPENSPLAT_METALLIB_COMPILER)
+        set(METALLIB_COMPILER_COMMAND "${OPENSPLAT_METALLIB_COMPILER}")
+    else()
+        set(METALLIB_COMPILER_COMMAND xcrun -sdk macosx metallib)
+    endif()
+
+    if(OPENSPLAT_PRECOMPILED_METALLIB)
+        file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/rasterizer/gsplat-metal/gsplat_metal.metal" CURRENT_METAL_SHA256)
+        if(NOT EXISTS "${OPENSPLAT_PRECOMPILED_METALLIB}" OR NOT CURRENT_METAL_SHA256 STREQUAL OPENSPLAT_PRECOMPILED_SOURCE_SHA256)
+            message(FATAL_ERROR "Precompiled Metal library requires an existing file and matching shader source hash")
+        endif()
+        set(METAL_COMPILER_RESULT 0)
+        message(STATUS "Reusing explicitly supplied Metal library with matching shader source")
+    else()
+        execute_process(COMMAND ${METAL_COMPILER_COMMAND} --version
+                    RESULT_VARIABLE METAL_COMPILER_RESULT
+                    OUTPUT_QUIET ERROR_QUIET)
+    endif()
+    if(NOT METAL_COMPILER_RESULT EQUAL 0)
+        message(WARNING "Metal compiler not found, building with CPU support only. "
+                        "Install Xcode and the Metal toolchain "
+                        "(xcodebuild -downloadComponent MetalToolchain), then re-run cmake.")
+        set(GPU_RUNTIME "CPU")
+    else()
+        find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
+        find_library(METAL_FRAMEWORK    Metal      REQUIRED)
+        find_library(METALKIT_FRAMEWORK MetalKit   REQUIRED)
+        message(STATUS "Metal framework found")
+
+        set(XC_FLAGS -O3)
+        set(OPENSPLAT_METAL_MODULE_CACHE_PATH "" CACHE PATH
+            "Optional writable module cache path for the Metal compiler")
+        if(OPENSPLAT_METAL_MODULE_CACHE_PATH)
+            list(APPEND XC_FLAGS
+                "-fmodules-cache-path=${OPENSPLAT_METAL_MODULE_CACHE_PATH}")
+        endif()
+        if(OPENSPLAT_USE_FAST_MATH)
+            message(STATUS "Fast math optimizations enabled for Metal")
+
+            set(XC_FLAGS ${XC_FLAGS} -ffast-math)
+        endif()
+        set(USE_MPS ON CACHE BOOL "Use MPS for GPU acceleration")
+    endif()
+else()
+    set(GPU_RUNTIME "CPU")
+endif()
+
+# Use C++20 when the compiler supports it (required by libtorch >= 2.13),
+# otherwise fall back to C++17
+if("cxx_std_20" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
+    set(OPENSPLAT_CXX_STANDARD 20)
+else()
+    set(OPENSPLAT_CXX_STANDARD 17)
+endif()
+message(STATUS "Using C++ standard: ${OPENSPLAT_CXX_STANDARD}")
+set(CMAKE_CXX_STANDARD ${OPENSPLAT_CXX_STANDARD})
+if((GPU_RUNTIME STREQUAL "CUDA") OR (GPU_RUNTIME STREQUAL "HIP"))
+    enable_language(${GPU_RUNTIME})
+    string(TOLOWER "${GPU_RUNTIME}" GPU_RUNTIME_LOWER)
+    if("${GPU_RUNTIME_LOWER}_std_${OPENSPLAT_CXX_STANDARD}" IN_LIST CMAKE_${GPU_RUNTIME}_COMPILE_FEATURES)
+        set(OPENSPLAT_GPU_STANDARD ${OPENSPLAT_CXX_STANDARD})
+    else()
+        set(OPENSPLAT_GPU_STANDARD 17)
+    endif()
+    message(STATUS "Using ${GPU_RUNTIME} standard: ${OPENSPLAT_GPU_STANDARD}")
+    set(CMAKE_${GPU_RUNTIME}_STANDARD ${OPENSPLAT_GPU_STANDARD})
+    set(${GPU_RUNTIME}_STANDARD ${OPENSPLAT_GPU_STANDARD})
+endif()
+
+if (NOT WIN32 AND NOT APPLE)
+    set(STDPPFS_LIBRARY stdc++fs)
+endif()
+
+find_package(Torch REQUIRED)
+find_package(OpenCV HINTS "${OPENCV_DIR}" REQUIRED)
+if (OPENSPLAT_BUILD_VISUALIZER)
+    find_package(Pangolin REQUIRED)
+endif()
+
+if (NOT WIN32 AND NOT APPLE)
+    set(CMAKE_CUDA_COMPILER "${CUDA_TOOLKIT_ROOT_DIR}/bin/nvcc")
+endif()
+set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_highgui)
+
+set(GSPLAT_LIBS gsplat_cpu)
+if((GPU_RUNTIME STREQUAL "CUDA") OR (GPU_RUNTIME STREQUAL "HIP"))
+    add_library(gsplat rasterizer/gsplat/forward.cu rasterizer/gsplat/backward.cu rasterizer/gsplat/bindings.cu rasterizer/gsplat/helpers.cuh)
+    list(APPEND GSPLAT_LIBS gsplat)
+    if(GPU_RUNTIME STREQUAL "CUDA")
+        set(GPU_LIBRARIES "cuda")
+        target_link_libraries(gsplat PUBLIC cuda)
+    else(GPU_RUNTIME STREQUAL "HIP")
+        set(GPU_INCLUDE_DIRS "${ROCM_ROOT}/include")
+        target_compile_definitions(gsplat PRIVATE USE_HIP __HIP_PLATFORM_AMD__)
+    endif()
+    target_include_directories(gsplat PRIVATE
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        ${TORCH_INCLUDE_DIRS}
+    )
+    target_link_libraries(gsplat PUBLIC tinyglm)
+    set_target_properties(gsplat PROPERTIES LINKER_LANGUAGE CXX)
+elseif(GPU_RUNTIME STREQUAL "MPS")    
+    add_library(gsplat rasterizer/gsplat-metal/gsplat_metal.mm)
+    list(APPEND GSPLAT_LIBS gsplat)
+    target_link_libraries(gsplat PRIVATE 
+        ${FOUNDATION_LIBRARY}
+        ${METAL_FRAMEWORK}
+        ${METALKIT_FRAMEWORK}
+    )
+    target_include_directories(gsplat PRIVATE ${TORCH_INCLUDE_DIRS})
+    # copy shader files to bin directory
+    configure_file(rasterizer/gsplat-metal/gsplat_metal.metal ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gsplat_metal.metal COPYONLY)
+    if(OPENSPLAT_PRECOMPILED_METALLIB)
+        configure_file("${OPENSPLAT_PRECOMPILED_METALLIB}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/default.metallib" COPYONLY)
+    else()
+      add_custom_command(
+        OUTPUT ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/default.metallib
+        COMMAND ${METAL_COMPILER_COMMAND}    ${XC_FLAGS} -c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gsplat_metal.metal -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gsplat_metal.air
+        COMMAND ${METALLIB_COMPILER_COMMAND}             ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gsplat_metal.air   -o ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/default.metallib
+        COMMAND rm -f ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gsplat_metal.air
+        COMMAND rm -f ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gsplat_metal.metal
+        DEPENDS rasterizer/gsplat-metal/gsplat_metal.metal
+        COMMENT "Compiling Metal kernels"
+      )
+    endif()
+
+    add_custom_target(
+        gsplat_metal ALL
+        DEPENDS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/default.metallib
+    )
+endif()
+
+add_library(gsplat_cpu rasterizer/gsplat-cpu/gsplat_cpu.cpp)
+target_include_directories(gsplat_cpu PRIVATE ${TORCH_INCLUDE_DIRS})
+
+set(OPENSPLAT_SRC_FILES opensplat.cpp point_io.cpp nerfstudio.cpp model.cpp
+kdtree_tensor.cpp spherical_harmonics.cpp cv_utils.cpp project_gaussians.cpp
+rasterize_gaussians.cpp ssim.cpp colmap.cpp opensfm.cpp openmvg.cpp input_data.cpp
+tensor_math.cpp rad.cpp zip_utils.cpp undistort.cpp sysinfo.cpp image_store.cpp image_pipeline.cpp)
+
+if (OPENSPLAT_BUILD_VISUALIZER)
+    if (Pangolin_FOUND)
+        message(STATUS "Found Pangolin. Building visualizer (beta)")
+        list(APPEND OPENSPLAT_SRC_FILES visualizer.cpp)
+        add_definitions(-DUSE_VISUALIZATION)
+    else()
+        message(FATAL "Pangolin not found. Cannot build visualizer (beta)")
+    endif()
+endif()
+
+add_executable(opensplat ${OPENSPLAT_SRC_FILES})
+
+if(OPENSPLAT_USE_PCH)
+    target_precompile_headers(opensplat PRIVATE
+        <torch/torch.h>
+        <opencv2/core/core.hpp>
+        <opencv2/imgcodecs.hpp>
+        <opencv2/imgproc.hpp>
+    )
+endif()
+
+install(TARGETS opensplat DESTINATION bin)
+set_property(TARGET opensplat PROPERTY CXX_STANDARD ${OPENSPLAT_CXX_STANDARD})
+target_include_directories(opensplat PRIVATE
+    ${PROJECT_SOURCE_DIR}/rasterizer
+    ${GPU_INCLUDE_DIRS}
+)
+target_link_libraries(opensplat PUBLIC ${STDPPFS_LIBRARY} ${GPU_LIBRARIES} ${GSPLAT_LIBS} ${TORCH_LIBRARIES} ${OpenCV_LIBS})
+if (Pangolin_FOUND)
+    target_link_libraries(opensplat PUBLIC ${Pangolin_LIBRARIES})
+endif()
+target_link_libraries(opensplat PRIVATE
+    nlohmann_json::nlohmann_json
+    cxxopts::cxxopts
+    nanoflann::nanoflann
+    miniz
+    spz::spz
+)
+if (NOT WIN32)
+    target_link_libraries(opensplat PUBLIC pthread)
+endif()
+if(GPU_RUNTIME STREQUAL "HIP")
+    target_compile_definitions(opensplat PRIVATE USE_HIP __HIP_PLATFORM_AMD__)
+elseif(GPU_RUNTIME STREQUAL "CUDA")
+    target_compile_definitions(opensplat PRIVATE USE_CUDA)
+elseif(GPU_RUNTIME STREQUAL "MPS")
+    target_compile_definitions(opensplat PRIVATE USE_MPS)
+endif()
+
+if(OPENSPLAT_BUILD_SIMPLE_TRAINER)
+    add_executable(simple_trainer simple_trainer.cpp project_gaussians.cpp rasterize_gaussians.cpp cv_utils.cpp)
+    if(OPENSPLAT_USE_PCH)
+        target_precompile_headers(simple_trainer PRIVATE <torch/torch.h>)
+    endif()
+    install(TARGETS simple_trainer DESTINATION bin)
+    target_include_directories(simple_trainer PRIVATE
+        ${PROJECT_SOURCE_DIR}/rasterizer
+        ${GPU_INCLUDE_DIRS}
+    )
+    target_link_libraries(simple_trainer PUBLIC ${GPU_LIBRARIES} ${GSPLAT_LIBS} ${TORCH_LIBRARIES} ${OpenCV_LIBS})
+    target_link_libraries(simple_trainer PRIVATE
+        nlohmann_json::nlohmann_json
+        cxxopts::cxxopts
+        nanoflann::nanoflann
+    )
+    if (NOT WIN32)
+        target_link_libraries(simple_trainer PUBLIC pthread)
+    endif()
+    set_property(TARGET simple_trainer PROPERTY CXX_STANDARD ${OPENSPLAT_CXX_STANDARD})
+    if(GPU_RUNTIME STREQUAL "HIP")
+        target_compile_definitions(simple_trainer PRIVATE USE_HIP __HIP_PLATFORM_AMD__)
+    elseif(GPU_RUNTIME STREQUAL "CUDA")
+        target_compile_definitions(simple_trainer PRIVATE USE_CUDA)
+    elseif(GPU_RUNTIME STREQUAL "MPS")
+        target_compile_definitions(simple_trainer PRIVATE USE_MPS)
+    endif()
+endif()
+
+# The following code block is suggested to be used on Windows.
+# According to https://github.com/pytorch/pytorch/issues/25457,
+# the DLLs need to be copied to avoid memory errors.
+if (MSVC)
+    file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
+    file(GLOB OPENCV_DLL "${OPENCV_DIR}/x64/vc16/bin/opencv_world*[0-9].dll")
+    set(DLLS_TO_COPY ${TORCH_DLLS} ${OPENCV_DLL})
+    add_custom_command(TARGET opensplat
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${DLLS_TO_COPY}
+        $<TARGET_FILE_DIR:opensplat>)
+endif (MSVC)
+
+add_compile_definitions(GLOG_USE_GLOG_EXPORT)

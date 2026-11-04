@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>__TRIAL_ID__ - Environment Review | PD Insighter</title>
+  <style>
+    :root { --ink:#17231c; --muted:#67746d; --green:#187859; --line:#dae3da; --card:#ffffffed; --paper:#f6f5ed; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:radial-gradient(ellipse at 10% 0%,#e4e8d9,transparent 60%),linear-gradient(145deg,#f6f3e9,#edf3ef); font-family:"Avenir Next","Gill Sans",sans-serif; }
+    .page { max-width:2040px; margin:auto; padding:22px; display:grid; grid-template-columns:minmax(0,1fr); gap:18px; }
+    .card { min-width:0; background:var(--card); border:1px solid var(--line); border-radius:26px; box-shadow:0 14px 42px #253b2610; }
+    .utility-bar { padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+    .nav-context { display:flex; align-items:center; gap:12px; }
+    .nav-mark { padding:12px; border-radius:14px; background:var(--green); color:white; font-weight:900; }
+    .nav-context strong,.nav-context span:not(.nav-mark) { display:block; }
+    .nav-context span:not(.nav-mark) { font-size:12px; color:var(--muted); }
+    .nav-tabs,.toolbar,.downloads { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .nav-tabs { min-width:0; }
+    .nav-tab,button,.button { padding:10px 16px; border:1px solid var(--line); border-radius:999px; background:white; color:var(--ink); font:inherit; font-weight:800; text-decoration:none; cursor:pointer; }
+    .nav-tab.active,button.primary { background:var(--green); color:white; border-color:var(--green); }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    button:hover:not(:disabled),a.nav-tab:hover { border-color:var(--green); }
+    button:focus-visible,a:focus-visible,select:focus-visible { outline:3px solid #d19d30; outline-offset:3px; }
+    select { padding:9px 12px; border:1px solid var(--line); border-radius:14px; font:inherit; background:white; color:var(--ink); max-width:100%; }
+    .trial-switcher { display:flex; gap:10px; align-items:center; font-weight:800; }
+    .hero { padding:22px 28px; display:flex; gap:18px; align-items:center; justify-content:space-between; }
+    h1 { margin:0 0 8px; font-size:clamp(28px,3vw,42px); letter-spacing:-.045em; line-height:1.08; }
+    h2 { font-size:22px; margin:0 0 8px; letter-spacing:-.03em; }
+    h3 { margin:12px 0 6px; }
+    p { color:var(--muted); line-height:1.6; margin:6px 0; }
+    .badge { border-radius:14px; padding:10px 14px; background:#fff6db; color:#775809; font-weight:800; white-space:nowrap; }
+    .workspace { display:grid; grid-template-columns:minmax(0,1fr) 370px; gap:18px; align-items:start; }
+    .scene { overflow:hidden; min-width:0; }
+    .scene-head { padding:20px 24px 8px; }
+    .toolbar { padding:10px 24px; border-bottom:1px solid var(--line); }
+    .toolbar label { font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+    #scenePlot { height:800px; width:100%; }
+    .caption { padding:12px 24px 18px; font-size:13px; color:var(--muted); line-height:1.6; }
+    .side { padding:20px; display:grid; gap:14px; }
+    .video-stage { position:relative; aspect-ratio:1; overflow:hidden; background:#101912; border-radius:18px; }
+    video { width:100%; height:100%; object-fit:contain; transform:rotate(90deg); cursor:pointer; }
+    .video-stage:fullscreen { display:flex; justify-content:center; align-items:center; }
+    .video-stage:fullscreen video { width:100vmin; height:100vmin; }
+    .video-tools { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+    .video-tools button { font-size:12px; padding:7px 10px; }
+    .playback { display:flex; align-items:center; gap:10px; }
+    #videoSeek { width:100%; accent-color:var(--green); cursor:pointer; }
+    .readout { padding:12px; background:#f0f6f1; border-radius:14px; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+    .legend { display:grid; gap:7px; color:var(--muted); font-size:13px; line-height:1.5; }
+    .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+    .motion-strip { height:20px; position:relative; overflow:hidden; background:#e6ebe5; border-radius:8px; cursor:pointer; }
+    .motion-strip .segment { position:absolute; height:100%; top:0; }
+    .motion-strip .cursor { position:absolute; top:0; bottom:0; width:2px; background:#111; pointer-events:none; }
+    #motionName { font-size:13px; color:var(--muted); }
+    .small { font-size:12px; color:var(--muted); line-height:1.5; }
+    .stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .stat { background:#f6f7f1; padding:12px; border:1px solid var(--line); border-radius:14px; }
+    .stat strong { display:block; font-size:19px; } .stat span { font-size:11px; color:var(--muted); }
+    details.method { padding:22px 26px; }
+    summary { font-weight:800; cursor:pointer; }
+    .method-grid { display:grid; grid-template-columns:1fr 1fr; gap:26px; margin-top:18px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; line-height:1.5; }
+    td,th { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+    code { font-size:12px; background:#f0f2eb; border-radius:4px; padding:2px 4px; overflow-wrap:anywhere; }
+    ol { padding-left:22px; color:var(--muted); line-height:1.65; }
+    .downloads { margin-top:18px; }
+    .downloads a { font-size:13px; }
+    .notice { border-left:4px solid #d09424; padding:8px 12px; background:#fff8e7; border-radius:8px; }
+    .rgb-experiment { display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:24px; padding:24px; align-items:center; }
+    .rgb-experiment img { width:100%; border-radius:16px; }
+    .gaussian-experiment { display:grid; grid-template-columns:minmax(300px,.7fr) minmax(0,1.3fr); gap:24px; padding:24px; align-items:center; }
+    .submap-experiment { display:grid; grid-template-columns:minmax(300px,.8fr) minmax(0,1.2fr); gap:24px; padding:24px; align-items:center; }
+    .splat-frame { width:100%; min-height:600px; border:0; border-radius:18px; background:#0b1410; }
+    @media(max-width:1100px) { .workspace { grid-template-columns:1fr; } .side { grid-template-columns:1fr 1fr; } #scenePlot { height:660px; } .side>div:first-child { grid-row:span 4; } }
+    @media(max-width:900px) { .gaussian-experiment,.submap-experiment { grid-template-columns:1fr; } .splat-frame { min-height:520px; } }
+    @media(max-width:680px) { .page { padding:10px; } .hero { align-items:start; flex-direction:column; padding:20px; } .side,.method-grid,.rgb-experiment { grid-template-columns:1fr; } .side>div:first-child { grid-row:auto; } .nav-tabs { flex-wrap:nowrap; overflow-x:auto; width:100%; padding-bottom:4px; } .nav-tab { white-space:nowrap; } #scenePlot { height:530px; } .toolbar { padding:12px; gap:8px; } .badge { white-space:normal; } .splat-frame { min-height:460px; } }
+  </style>
+  <script>__PLOTLY_SCRIPT__</script>
+</head>
+<body>
+<main class="page">
+  <nav class="card utility-bar" aria-label="PD Insighter navigation">
+    <div class="nav-context"><span class="nav-mark">PD</span><div><strong>__TRIAL_ID__</strong><span>Environment Review</span></div></div>
+    <div class="nav-tabs" aria-label="Trial views">
+      <a class="nav-tab" href="../index.html">Full Session</a>
+      <a class="nav-tab" href="../pd_insighter_manual_labeling.html">Manual Labels</a>
+      <a class="nav-tab" href="../pd_insighter_stride_review.html">Stride</a>
+      <a class="nav-tab" href="../pd_insighter_transition_review.html">Transitions</a>
+      <span class="nav-tab active" data-view="environment" aria-current="page">Environment</span>
+    </div>
+    <label class="trial-switcher">Trial <select id="trialJumpSelect" aria-label="Switch trial or return to all trials">__TRIAL_OPTIONS__</select></label>
+  </nav>
+  <header class="card hero">
+    <div><h1>Environment Reconstruction</h1><p>Explore the measured scene around the head path. Use the Aria video to check what the geometry represents.</p></div>
+    <span class="badge">Exploratory geometry, not a finished room model</span>
+  </header>
+  __SCENE_PLAYBACK__
+  <section class="workspace">
+    <div class="card scene">
+      <div class="scene-head"><h2>3D Spatial Context</h2><p>Drag to rotate. Use + / - to zoom; mouse-wheel zoom is off. Click the orange path to play that time.</p></div>
+      <div class="toolbar">
+        <label>Layer <select id="layerMode"><option value="points">Measured points</option><option value="overlay">Points + inferred surface</option><option value="surface">Inferred surface</option></select></label>
+        <button id="zoomOut" aria-label="Zoom out">-</button><button id="zoomIn" aria-label="Zoom in">+</button>
+        <button id="viewTop">Top</button><button id="viewSide">Side</button><button id="viewReset">Reset 3D</button>
+        <button id="wholeScene">Whole route</button><button id="nearVideo" disabled>Near video</button>
+        <label>Radius <select id="localRadius"><option value="3">3 m</option><option value="6" selected>6 m</option><option value="10">10 m</option></select></label>
+        <label><input type="checkbox" id="followVideo"> Follow locally</label>
+      </div>
+      <div id="scenePlot" aria-label="Interactive 3D Aria environment"></div>
+      <div class="caption" id="sceneCaption">Loading measured geometry...</div>
+    </div>
+    <aside class="card side">
+      <div><h2>Aria Video</h2><div class="video-stage" id="videoStage"><video id="ariaVideo" playsinline preload="metadata" src="__VIDEO_HREF__" aria-label="Aria video; click to play or pause"></video></div>
+        <div class="video-tools"><button id="rotateVideo">Aria 90°: rotate +90°</button><button id="fullscreenVideo">Full screen</button></div>
+        <p class="small">Click video or use Play/Pause below. Full original recording timeline. This browser copy is silent; the original recording is unchanged.</p></div>
+      <div>
+        <div class="playback"><button class="primary" id="playPause">Play</button><span id="videoTime" class="small">0:00.0</span></div>
+        <label class="small" for="videoSeek">Recording position</label><input id="videoSeek" type="range" min="0" step="0.01" value="0" aria-label="Seek Aria recording">
+      </div>
+      <div id="syncStatus" class="readout" role="status" aria-live="off"></div>
+      <div><strong style="font-size:13px">Automatic classification</strong><div id="motionStrip" class="motion-strip" role="slider" tabindex="0" aria-label="Classification timeline; click to seek" aria-valuemin="0"></div><p id="motionName"></p><p class="small">Colors are inherited from Full Session. Unclassified recording edges stay gray. Existing labels retain their dashboard times.</p></div>
+      <div class="legend">
+        <div><span class="dot" style="background:#443983"></span>Points: MPS-estimated static-scene landmarks.</div>
+        <div><span class="dot" style="background:#35b779"></span>Color: world Z height, not real RGB texture.</div>
+        <div><span class="dot" style="background:#e05236"></span>Orange: glasses/head path, not feet.</div>
+        <div><span class="dot" style="background:#f1be3f"></span>Yellow: timestamp-linked video position.</div>
+      </div>
+      <div class="stats"><div class="stat"><strong id="pointCount"></strong><span>Retained MPS points</span></div><div class="stat"><strong id="faceCount"></strong><span>Inferred mesh faces</span></div></div>
+      <div class="notice small">Missing geometry does not mean empty space. Stairs and furniture must be verified in video before interpreting their shape.</div>
+    </aside>
+  </section>
+  __RGB_EXPERIMENT__
+  __GAUSSIAN_EXPERIMENT__
+  __GAUSSIAN_SUBMAPS__
+  <details class="card method">
+    <summary>Methodology: what Aria supplies, what we reconstruct, and how texture works</summary>
+    <div class="method-grid">
+      <div><h2>Inputs and meanings</h2>
+        <table><thead><tr><th>Aria file</th><th>Role</th></tr></thead><tbody>
+          <tr><td><code>semidense_points.csv.gz</code></td><td>Estimated XYZ landmarks in meters. Semi-dense does not mean every surface is covered.</td></tr>
+          <tr><td><code>closed_loop_trajectory.csv</code></td><td>Device position and orientation over time in the same world frame. This page uses position.</td></tr>
+          <tr><td><code>semidense_observations.csv.gz</code></td><td>Which camera saw a point, at what time and pixel. Useful for coverage and visibility evidence; not necessarily an RGB observation.</td></tr>
+          <tr><td><code>online_calibration.jsonl</code></td><td>Camera optics and camera-to-device transforms over time. Required for accurate color projection.</td></tr>
+          <tr><td><code>.vrs</code> + <code>.vrs.json</code></td><td>The original VRS holds camera frames, sensors and timestamps; its JSON sidecar holds recording metadata, not a 3D mesh.</td></tr>
+        </tbody></table>
+        <h3>Current pipeline</h3><p>Quality and spatial filters retain scene evidence. A 0.14 m voxel density field, Gaussian smoothing, and marching cubes estimate an envelope around those points. The extraction stride is 0.28 m; neither number is an accuracy guarantee.</p>
+        <p id="extentText"></p><p id="agreementText"></p>
+      </div>
+      <div><h2>How far can we go now?</h2><p>We can inspect a partial route-level scene, large surface groupings, floor-level changes and where the head moved. We cannot yet claim complete rooms, identified furniture, reliable stair dimensions, calibrated RGB appearance, or clinical obstacle measurements.</p>
+        <h3>Recovering texture, in plain language</h3>
+        <ol>
+          <li>Read an original RGB frame and its exposure time from VRS.</li>
+          <li>Find the device's position and orientation at that exact time.</li>
+          <li>Account for where the RGB camera is mounted on the glasses.</li>
+          <li>Calculate which image pixel corresponds to each 3D surface point.</li>
+          <li>Reject hidden surfaces, points behind the camera and blurred/bad views.</li>
+          <li>Combine reliable colors from several views instead of painting from one frame.</li>
+          <li>Save vertex colors first, or a UV texture atlas for more detailed appearance.</li>
+        </ol>
+        <p>Our existing undistorted MP4 is useful for review, but does not provide the exact frame timing and output camera projection needed for calibrated texturing. The separate Aria environment now reads Ntrial3 VRS, and the local RGB experiment uses original frames. Coloring cannot recover missing geometry.</p>
+      </div>
+    </div>
+    <div class="downloads">
+      <a class="button" href="../../../ARIA_ENVIRONMENT_RECONSTRUCTION.md">English methodology</a>
+      <a class="button" href="filtered_mps_point_cloud.ply">Measured-point PLY</a>
+      <a class="button" href="experimental_surface_mesh.glb">Mesh GLB</a>
+      <a class="button" href="experimental_surface_mesh.ply">Mesh PLY</a>
+      <a class="button" href="reconstruction_summary.json">Provenance JSON</a>
+    </div>
+  </details>
+</main>
+<script>
+  const figure = __FIGURE__;
+  const data = __DATA__;
+  const path = data.path;
+  const video = document.getElementById('ariaVideo');
+  const plot = document.getElementById('scenePlot');
+  // Plotly mutates trace arrays when filtering a view; retain the complete evidence.
+  const sourcePoints = Object.fromEntries(['x','y','z'].map(axis=>[axis,[...figure.data[1][axis]]]));
+  const sourceMesh = Object.fromEntries(['x','y','z','i','j','k'].map(axis=>[axis,[...figure.data[0][axis]]]));
+  const seek = document.getElementById('videoSeek');
+  const motionStrip = document.getElementById('motionStrip');
+  const motionCursor = document.createElement('span'); motionCursor.className='cursor';
+  const verified = data.sync.mode === 'device_timestamp_offset';
+  let ready=false, localCenter=null, currentPosition=null;
+  let pointDisplayCount=sourcePoints.x.length, faceDisplayCount=sourceMesh.i.length;
+  const number = value => Number(value).toLocaleString('en-US');
+  const fmt = value => `${Math.floor(value/60)}:${(value%60).toFixed(1).padStart(4,'0')}`;
+  const defaultEye = {x:1.45,y:-1.55,z:1.05};
+  document.getElementById('pointCount').textContent=number(data.summary.filtering.final_point_count);
+  document.getElementById('faceCount').textContent=number(data.summary.surface.mesh_faces);
+  seek.max=data.videoDuration;
+  motionStrip.setAttribute('aria-valuemax',data.videoDuration);
+  document.getElementById('extentText').textContent=`Retained XYZ bounds: ${data.summary.filtering.bounds_min_m.map(v=>v.toFixed(2)).join(', ')} to ${data.summary.filtering.bounds_max_m.map(v=>v.toFixed(2)).join(', ')} m. This is the observed route's extent, not a room-size measurement.`;
+  const agreement=data.summary.surface.vertex_to_measured_point_distance_m;
+  document.getElementById('agreementText').textContent=`Mesh-to-input point distance: median ${agreement.median.toFixed(3)} m, 95th percentile ${agreement.p95.toFixed(3)} m. This measures agreement with input evidence, not independent accuracy.`;
+  document.getElementById('trialJumpSelect').addEventListener('change',event=>{ window.location.href=event.target.value; });
+  function positionAt(time) {
+    if (!verified || time<path.t[0] || time>path.t.at(-1)) return null;
+    let low=0,high=path.t.length-1;
+    while(low<high) { const mid=Math.floor((low+high)/2); if(path.t[mid]<time) low=mid+1; else high=mid; }
+    const b=low,a=Math.max(0,b-1),span=path.t[b]-path.t[a];
+    if(span>0.25) return null;
+    const fraction=span ? (time-path.t[a])/span : 0;
+    return ['x','y','z'].map(axis=>path[axis][a]+fraction*(path[axis][b]-path[axis][a]));
+  }
+  function refreshCaption() {
+    const layer=document.getElementById('layerMode').value;
+    const scope=localCenter ? `Local cube, +/- ${document.getElementById('localRadius').value} m around the selected video position.` : 'Whole observed route; axes use meters and equal spatial scale.';
+    document.getElementById('sceneCaption').textContent=`${scope} Displaying ${number(pointDisplayCount)} sampled points${layer!=='points' ? ` and ${number(faceDisplayCount)} inferred faces` : ''}. Filtering this view does not alter or regenerate the reconstruction.`;
+  }
+  function setLocal(center) {
+    localCenter=center;
+    const radius=Number(document.getElementById('localRadius').value);
+    const inside=(x,y,z)=>!center || Math.max(Math.abs(x-center[0]),Math.abs(y-center[1]),Math.abs(z-center[2]))<=radius;
+    const points={x:[],y:[],z:[]};
+    for(let n=0;n<sourcePoints.x.length;n++) if(inside(sourcePoints.x[n],sourcePoints.y[n],sourcePoints.z[n])) {
+      ['x','y','z'].forEach(axis=>points[axis].push(sourcePoints[axis][n]));
+    }
+    const faces={i:[],j:[],k:[]};
+    for(let n=0;n<sourceMesh.i.length;n++) if(['i','j','k'].every(axis=>{
+      const v=sourceMesh[axis][n]; return inside(sourceMesh.x[v],sourceMesh.y[v],sourceMesh.z[v]);
+    })) ['i','j','k'].forEach(axis=>faces[axis].push(sourceMesh[axis][n]));
+    pointDisplayCount=points.x.length; faceDisplayCount=faces.i.length;
+    const ranges={};
+    ['x','y','z'].forEach((axis,n)=>{
+      ranges[`scene.${axis}axis.autorange`]=!center;
+      ranges[`scene.${axis}axis.range`]=center ? [center[n]-radius,center[n]+radius] : null;
+    });
+    return Promise.all([
+      Plotly.restyle(plot,{x:[points.x],y:[points.y],z:[points.z],'marker.color':[points.z]},[1]),
+      Plotly.restyle(plot,{i:[faces.i],j:[faces.j],k:[faces.k]},[0]),
+      Plotly.relayout(plot,ranges),
+    ]).then(refreshCaption);
+  }
+  function syncMarker() {
+    const time=video.currentTime||0;
+    currentPosition=positionAt(time);
+    seek.value=time;
+    document.getElementById('videoTime').textContent=`${fmt(time)} / ${fmt(data.videoDuration)}`;
+    document.getElementById('playPause').textContent=video.paused ? 'Play' : 'Pause';
+    document.getElementById('nearVideo').disabled=!currentPosition;
+    if(ready) Plotly.restyle(plot,currentPosition ? {visible:true,x:[[currentPosition[0]]],y:[[currentPosition[1]]],z:[[currentPosition[2]]]} : {visible:false},[3]);
+    const dashboardTime=data.sync.dashboard_time_offset_s===null ? null : time+data.sync.dashboard_time_offset_s;
+    const inDashboard=dashboardTime!==null && dashboardTime>=0 && dashboardTime<=Number(data.sync.dashboard_duration_s);
+    const dashboardText=inDashboard ? `Dashboard time ${fmt(dashboardTime)}.` : 'Outside the dashboard review interval.';
+    document.getElementById('syncStatus').textContent=currentPosition
+      ? `${dashboardText} World XYZ (${currentPosition.map(v=>v.toFixed(2)).join(', ')}) m. Video-SLAM alignment uses the device-clock offset, not duration stretching.`
+      : `${dashboardText} ${verified ? 'No SLAM pose at this video time; the marker is hidden.' : 'Video-SLAM timing is unverified; the marker is disabled.'}`;
+    const motion=inDashboard && data.motionSegments.find(seg=>dashboardTime>=seg.start_s && dashboardTime<seg.end_s);
+    document.getElementById('motionName').textContent=motion ? `${motion.label} | dashboard ${fmt(motion.start_s)}-${fmt(motion.end_s)}` : 'No automatic classification for this recording time.';
+    motionCursor.style.left=`${100*time/data.videoDuration}%`;
+    motionStrip.setAttribute('aria-valuenow',time.toFixed(2));
+    if(ready && currentPosition && document.getElementById('followVideo').checked) {
+      const radius=Number(document.getElementById('localRadius').value);
+      if(!localCenter || Math.hypot(...currentPosition.map((v,n)=>v-localCenter[n]))>radius/3) setLocal(currentPosition);
+    }
+  }
+  if(data.sync.dashboard_time_offset_s!==null) data.motionSegments.forEach(seg=>{
+    const start=Math.max(0,seg.start_s-data.sync.dashboard_time_offset_s);
+    const end=Math.min(data.videoDuration,seg.end_s-data.sync.dashboard_time_offset_s);
+    if(end<=start) return;
+    const element=document.createElement('span');element.className='segment';
+    element.style.left=`${100*start/data.videoDuration}%`;
+    element.style.width=`${100*(end-start)/data.videoDuration}%`;element.style.background=seg.color||'#9ea69e';
+    element.title=`${seg.label}: recording ${fmt(start)}-${fmt(end)}`;motionStrip.append(element);
+  });
+  motionStrip.append(motionCursor);
+  motionStrip.addEventListener('click',event=>{
+    const rect=motionStrip.getBoundingClientRect();video.currentTime=Math.max(0,Math.min(data.videoDuration,(event.clientX-rect.left)/rect.width*data.videoDuration));
+  });
+  motionStrip.addEventListener('keydown',event=>{
+    if(event.code==='ArrowLeft' || event.code==='ArrowRight') { event.preventDefault();video.currentTime=Math.max(0,Math.min(data.videoDuration,video.currentTime+(event.code==='ArrowRight'?1:-1))); }
+  });
+  Plotly.newPlot(plot,figure.data,figure.layout,{responsive:true,displaylogo:false,scrollZoom:false,displayModeBar:false}).then(()=>{
+    ready=true;refreshCaption();syncMarker();
+    plot.on('plotly_click',event=>{
+      const point=event.points && event.points[0];
+      if(verified && point && point.curveNumber===2 && Number.isFinite(Number(point.customdata))) {
+        video.currentTime=Math.max(0,Math.min(data.videoDuration,Number(point.customdata)));video.play().catch(()=>{});
+      }
+    });
+  });
+  document.getElementById('layerMode').addEventListener('change',event=>{
+    Plotly.restyle(plot,{visible:event.target.value!=='points'},[0]);
+    Plotly.restyle(plot,{visible:event.target.value!=='surface'},[1]);refreshCaption();
+  });
+  function setEye(eye) { if(ready) Plotly.relayout(plot,{'scene.camera':{eye,center:{x:0,y:0,z:0},up:{x:0,y:0,z:1}}}); }
+  function zoom(factor) {
+    if(!ready) return;const eye=plot.layout.scene.camera.eye;
+    const radius=Math.hypot(eye.x,eye.y,eye.z);
+    if(radius*factor<0.15 || radius*factor>12) return;
+    Plotly.relayout(plot,{'scene.camera.eye':{x:eye.x*factor,y:eye.y*factor,z:eye.z*factor}});
+  }
+  document.getElementById('zoomIn').addEventListener('click',()=>zoom(0.8));
+  document.getElementById('zoomOut').addEventListener('click',()=>zoom(1.25));
+  document.getElementById('viewTop').addEventListener('click',()=>setEye({x:0.001,y:0.001,z:2.5}));
+  document.getElementById('viewSide').addEventListener('click',()=>setEye({x:0.001,y:-2.5,z:0.1}));
+  document.getElementById('viewReset').addEventListener('click',()=>setEye(defaultEye));
+  document.getElementById('wholeScene').addEventListener('click',()=>{document.getElementById('followVideo').checked=false;if(ready)setLocal(null);});
+  document.getElementById('nearVideo').addEventListener('click',()=>{if(ready && currentPosition)setLocal(currentPosition);});
+  document.getElementById('localRadius').addEventListener('change',()=>{if(ready && localCenter)setLocal(localCenter);});
+  document.getElementById('followVideo').addEventListener('change',event=>{if(ready && event.target.checked && currentPosition)setLocal(currentPosition);});
+  function togglePlay() { if(video.paused)video.play().catch(()=>{});else video.pause(); }
+  video.addEventListener('click',togglePlay);
+  let videoRotation=90;
+  document.getElementById('rotateVideo').addEventListener('click',event=>{
+    videoRotation=(videoRotation+90)%360;video.style.transform=`rotate(${videoRotation}deg)`;
+    event.target.textContent=`Aria ${videoRotation}°: rotate +90°`;
+  });
+  document.getElementById('fullscreenVideo').addEventListener('click',()=>{
+    document.getElementById('videoStage').requestFullscreen?.().catch(()=>{});
+  });
+  document.getElementById('playPause').addEventListener('click',togglePlay);
+  document.addEventListener('keydown',event=>{
+    if(event.code==='Space' && !/^(INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY|A)$/.test(event.target.tagName)) { event.preventDefault();if(!event.repeat)togglePlay(); }
+  });
+  seek.addEventListener('input',()=>{video.currentTime=Number(seek.value);syncMarker();});
+  ['loadedmetadata','timeupdate','seeked','play','pause'].forEach(name=>video.addEventListener(name,syncMarker));
+  syncMarker();
+</script>
+</body>
+</html>

@@ -1,0 +1,926 @@
+{
+  "snapshot_date": "2026-11-03",
+  "scope": "Supporting source only; paths relative to workspace/",
+  "files": [
+    {
+      "path": "VRS_Pre_Processing/scripts/overlap_label_to_video.py",
+      "bytes": 4317,
+      "sha256": "ac73798807cf6ae191c586aaba4a05f79871e5b2e144a6b495ac5021a5fe3b41"
+    },
+    {
+      "path": "VRS_Pre_Processing/scripts/rotate_medias.py",
+      "bytes": 3814,
+      "sha256": "d35232fc5581a10c2bf59cfa59d6ac9b2172e5db7d50c5fdb1c4f9418e1cf50b"
+    },
+    {
+      "path": "VRS_Pre_Processing/scripts/video_extractor.py",
+      "bytes": 18928,
+      "sha256": "e949166dca4af4c3f9f44562e95760e2d4617facea10f94497fec171de30eace"
+    },
+    {
+      "path": "projectaria_tools/scripts/overlap_label_to_video.py",
+      "bytes": 4347,
+      "sha256": "a79465724e142ccc8ed96b283c45010e5763e144dab96248741efc45e412ce92"
+    },
+    {
+      "path": "projectaria_tools/scripts/rotate_medias.py",
+      "bytes": 3798,
+      "sha256": "3306506aab737a7762b6751806d781ea260c13eaef48b9f87f5c08ef2374a7bd"
+    },
+    {
+      "path": "projectaria_tools/scripts/video_extractor.py",
+      "bytes": 11999,
+      "sha256": "633b874376dca3966d8b162a2a3082232e240a6256aa65f09a559344b294f66b"
+    },
+    {
+      "path": "scripts/overlap_label_to_video.py",
+      "bytes": 4347,
+      "sha256": "a79465724e142ccc8ed96b283c45010e5763e144dab96248741efc45e412ce92"
+    },
+    {
+      "path": "scripts/process_longoria_vrs_chunks_mps.sh",
+      "bytes": 4205,
+      "sha256": "65526fc3706a2f365caf96d1b6a61933e2d6227c8a056a194b0bb5420c4622ec"
+    },
+    {
+      "path": "scripts/rotate_medias.py",
+      "bytes": 3798,
+      "sha256": "3306506aab737a7762b6751806d781ea260c13eaef48b9f87f5c08ef2374a7bd"
+    },
+    {
+      "path": "scripts/video_extractor.py",
+      "bytes": 12069,
+      "sha256": "192a01228d7cb558234bc7b0619b621ad3762fe9381d150ba4b1104fb8dad4b2"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.github/workflows/cuda/Linux-env.sh",
+      "bytes": 293,
+      "sha256": "78e71b92f2e8bb8818c9872d7b7932aba74419984145e17540beee22bfd211c8"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.github/workflows/cuda/Linux.sh",
+      "bytes": 2900,
+      "sha256": "da3095621c144bf8bb7dcd407f6cba0c2704ff1ff3ee1a8fb5cd0e8f6bed5fdb"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.github/workflows/cuda/Windows.ps1",
+      "bytes": 2255,
+      "sha256": "00a64e53aa848caa2690057eb0beed80b93bf763fe6762d8ff9d76ac41fa7763"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.github/workflows/docker.yml",
+      "bytes": 1420,
+      "sha256": "6ed2e3dff5d1b5dc12e4fca105ca19d2c62b181492f98532f63a869f218d92dd"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.github/workflows/hip.yml",
+      "bytes": 7768,
+      "sha256": "1268c2f7b2773e7f5fe1de4d30c0863293e1c4c2c8408887c8da78b6f84f7fa0"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.github/workflows/macos.yml",
+      "bytes": 4109,
+      "sha256": "312b82eb09f2d80420e3342d605c53cce6f14373a912fffac0282daba71d7fb3"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.github/workflows/rocm/Linux.sh",
+      "bytes": 1396,
+      "sha256": "cd50dc19c2ae802387acf5925f2c59249f44eb7db8b2cc32c9dbf76fced61c1f"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.github/workflows/ubuntu.yml",
+      "bytes": 5417,
+      "sha256": "099eb635c8b9db3a951a67c183cb59a4411007fa20811438f7a931ab638ae1f8"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.github/workflows/windows.yml",
+      "bytes": 7256,
+      "sha256": "bd8dc20354896a5e154e4bf3ed635e398af8b39b97fedcdd726baebcda712387"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/.gitignore",
+      "bytes": 60,
+      "sha256": "920be6d2b628ee24275f510f4492508ccfdfb4d2fd4325d3bd900088a217c0cc"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/AGENTS.md",
+      "bytes": 2000,
+      "sha256": "1f5c99baf01ce049db467e380f1a4965726868011fb0c8f97f8685f01dd035fd"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/CMakeLists.txt",
+      "bytes": 17014,
+      "sha256": "c482147b1dc2e16b63506e8aaa223fa6513f897e0f69c19322aab24a5c42af93"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/CODE_OF_CONDUCT.md",
+      "bytes": 5229,
+      "sha256": "d39407634b770938e7dbf82d7d71c1686bb0478cc23a400f7f75ec7a52d404b4"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/Dockerfile",
+      "bytes": 2342,
+      "sha256": "1ccffab75980b9d5b21cf64497781be851ed2d6733e3b730f164a5622a2d224e"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/Dockerfile.rocm",
+      "bytes": 2767,
+      "sha256": "cb55fb4fe50f71cd6709ec6fd6c678f48c5b5e4e9668fb124f8a5e0e7439defb"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/Dockerfile.rocm6",
+      "bytes": 951,
+      "sha256": "7fd5f9a9394c10f370a02afe4dcba8daccb81ec8d497c44d84c55c7c8d00a8bb"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/Dockerfile.rocm6.3.3",
+      "bytes": 959,
+      "sha256": "23a2671f540782067c26cdf93236849bf702bd15c8b3f6f487a0ac960da39c4c"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/Dockerfile.rocm6.4.0",
+      "bytes": 957,
+      "sha256": "236043c98599b8e6860aa96f02b7627c240b223f4018b4a92fe1e3ce6c9e37a1"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/Dockerfile.rocm7",
+      "bytes": 943,
+      "sha256": "27cb566d2904a27beb78994e97562e077d334be25d86c2271902126128c0aa4c"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/LICENSE.txt",
+      "bytes": 34520,
+      "sha256": "5193f8f46f89d2364c7b52f192c00ad4008e4c3e8b4f0b0eb0beca12ba31324a"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/README.md",
+      "bytes": 12810,
+      "sha256": "a6ed7659f03d918cdc7e8b8b53d1edafafaed97293a3e657d076676d9b68526f"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/VERSION",
+      "bytes": 6,
+      "sha256": "c62a5cc61ac4525935753f5ec284c0a052a4b1da4b3a3580dce2b7d77a2154ae"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/colmap.cpp",
+      "bytes": 6101,
+      "sha256": "379e86b44642c7880024b272b60121e9bd2d47bc93dda165e45356b27fa97636"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/colmap.hpp",
+      "bytes": 369,
+      "sha256": "f5196f418bc48be0fb62d501a281c297dfc19a5dd66f44dd3968d18d0c7c4d78"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/constants.hpp",
+      "bytes": 216,
+      "sha256": "0524fb24dcc01216ef3514f7f3ae5351cd1768e9459758041373b6c776a7b663"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/cv_utils.cpp",
+      "bytes": 1228,
+      "sha256": "8cca10ec3859eb343ee753cc52bfce85c33a40dd4bf278fe0f8860ff577f1433"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/cv_utils.hpp",
+      "bytes": 541,
+      "sha256": "634f5f75d4a897ff26cf42dc59a7d3eac7729000a108338483cdd17caf7be02f"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/gsplat.hpp",
+      "bytes": 247,
+      "sha256": "9c5a81811ee3126a99a812d0bebd0bf0fc4c6c09f51e8c1d3075e2c8ad040421"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/image_pipeline.cpp",
+      "bytes": 10381,
+      "sha256": "e43e4a8090e18bc3071c6c3361abc533dfc9a5a8d1d3adba7f24187e4715f56b"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/image_pipeline.hpp",
+      "bytes": 2112,
+      "sha256": "b711fd5e3b96634794cc184d829cff56bfea8a32035cac8d632c881c1e32cf40"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/image_store.cpp",
+      "bytes": 9942,
+      "sha256": "4309a735a9128443f2dbb15e8aa338a84de120f820d07b055c91d5b4da74aad4"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/image_store.hpp",
+      "bytes": 1992,
+      "sha256": "b1435d2074a596c901993e99df2a2af375aa2886b12f94092dc907797ed41242"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/input_data.cpp",
+      "bytes": 4828,
+      "sha256": "851dd20da12b36fd46adc7d1be94bcbb190587d9b1b62dba67d3bec5f080d6d9"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/input_data.hpp",
+      "bytes": 1762,
+      "sha256": "af8d7d89aed654c382ec8500044bde8b6bb49e35b1187724265d2cd7a8d69dbf"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/kdtree_tensor.cpp",
+      "bytes": 839,
+      "sha256": "bb37718951e630222f1ecbf337e51b54a6cac9941bbae074bb7a1585fc9f1188"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/kdtree_tensor.hpp",
+      "bytes": 1365,
+      "sha256": "8233b4834f61319d47f81ae3b579dbc53614262042684d745550303f9b4d82ec"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/model.cpp",
+      "bytes": 46367,
+      "sha256": "e86dd5382a10af62bc4de5bbdd435272ee04f8dc2d6f641eb22382f80144d639"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/model.hpp",
+      "bytes": 6577,
+      "sha256": "c0ce71e47ab485a75787f4e6642b0c873763decd20d1f46dfb67c7e417489754"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/nerfstudio.cpp",
+      "bytes": 5585,
+      "sha256": "4698b83ca6b6a012565c1f82d2a8f738e1f65caa363d68a9e5e19a7e672f071a"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/nerfstudio.hpp",
+      "bytes": 1149,
+      "sha256": "21a9da232b5c59d23e3689e97e7a53073f5cba7918574c30023afe7683b71e7d"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/openmvg.cpp",
+      "bytes": 12316,
+      "sha256": "3c0354a0cca401c81e4f9d27ae6137d6d6712304be7b4e7ace07cd3b8193cf42"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/openmvg.hpp",
+      "bytes": 1247,
+      "sha256": "21e8ce256d1ddbed09f64b36cc677436e009e406a75acf7dc72047478c84b69d"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/opensfm.cpp",
+      "bytes": 5843,
+      "sha256": "b4bb8a7463d50dd01dd33657d0918ab94127e5a8ae63fd1ab55c8593aabd3093"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/opensfm.hpp",
+      "bytes": 1309,
+      "sha256": "c12a1995169ed5420c707cb4b6f112f67a8832c36c0790e39314947aca3f9580"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/opensplat.cpp",
+      "bytes": 14785,
+      "sha256": "56d8dd015135e8b30da4b2a3be82362b329afe02a316cd436bb46b8acbaf544b"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/opensplat.hpp",
+      "bytes": 69,
+      "sha256": "01dfee3339a7b4630af0e1c326bf6902a78eb93ff3c1966f0e81ef639c8d2b39"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/point_io.cpp",
+      "bytes": 11375,
+      "sha256": "35824fa8f1d407d42a7e4097beeace16026d5fe35d0842f4e9855356227b11dc"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/point_io.hpp",
+      "bytes": 2757,
+      "sha256": "7b0c64ac776309c3bd423447abb5792afa265f9aacfaf9d2c9c9446cdbddfd53"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/project_gaussians.cpp",
+      "bytes": 4682,
+      "sha256": "cd4501ea0b3380f1db3ca490fbca8c41fc3fd9fdb50e2360f46efa92c77f03ca"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/project_gaussians.hpp",
+      "bytes": 1316,
+      "sha256": "34c91dbfa5a650ecb30d25e8394c10699b2aab41d3759334490b9b63830c642e"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rad.cpp",
+      "bytes": 82981,
+      "sha256": "1e5ce8c63e545f6e0a8837d28ae23aaf721fcc1353d315af67e6eab78b16ddd8"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rad.hpp",
+      "bytes": 1063,
+      "sha256": "4fe1dfba50c1f4f788930dc2c21b3856b9d1e5b416ca046b4f529182b784c745"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterize_gaussians.cpp",
+      "bytes": 10985,
+      "sha256": "34f6b61f88f2c00a2dac5afee09395f757dbba909ed7b9f7b4893c1ba5e0b364"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterize_gaussians.hpp",
+      "bytes": 2276,
+      "sha256": "86bb4e460fc8a6fb1f45ed507d504e759f539035859fd7e743fdd3bc84e5e1b4"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/README.txt",
+      "bytes": 174,
+      "sha256": "df950d279894b236b40ed0f2005471d05ab7240e7f6c658a0085e5dbd1814b2b"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/backward.cu",
+      "bytes": 21831,
+      "sha256": "6eea2de0bd07cce9e2e2e736126cb1c9af5c3c6f229a00a4d974e12353c905e5"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/backward.cuh",
+      "bytes": 3102,
+      "sha256": "8a204a673a80b847a1ecb0f9997ed62b1bf5a082097e38be2d573eb79bdc0d77"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/bindings.cu",
+      "bytes": 39069,
+      "sha256": "e69255d7bae488cf98abb9c91c3d95fddff49a5ff245cf46860c9c3d0826ec1f"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/bindings.h",
+      "bytes": 6301,
+      "sha256": "25eb513b97210341f687b32b9377ca84e6fc30c01d014c199422f4c01362fc18"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/config.h",
+      "bytes": 1040,
+      "sha256": "d21fd9b54ee5c88689896f74771a889d032d1c89af69ff129b54437e61cc5a71"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/ext.cpp",
+      "bytes": 868,
+      "sha256": "61f25d35c0fdae6e8ace8f7f53f310e3c36d7ce8275b419ac91c05f7b2bd0848"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/forward.cu",
+      "bytes": 16315,
+      "sha256": "3287654455d439d00e8fed5de9dd7a701f4260b72f5fc68841578a5b3a818238"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/forward.cuh",
+      "bytes": 3863,
+      "sha256": "5feed003f78efb21dc6bb2c915aea6d9792820932d0f1073225da04710038130"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/helpers.cuh",
+      "bytes": 7367,
+      "sha256": "ede68d06d35b4e9da2be754bcad7563bbb5cc5c5de2fe44eb718dafd6fd1a0a5"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/noinline.h",
+      "bytes": 217,
+      "sha256": "2eb04ef088a40a0bb3560c36053e63647c99c5b7764954ce456199322bb6bc81"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/reduce.cuh",
+      "bytes": 1816,
+      "sha256": "d88a0a54ed6b26c022901627b7e4da2928f9dd1696a2e364a4dc1ea3a0b897b2"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat/sh.cuh",
+      "bytes": 8957,
+      "sha256": "e8a2eefcc520e124395f035a00042001cc083b4fa65ea0c1a483e3d2b60aa414"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat-cpu/bindings.h",
+      "bytes": 3075,
+      "sha256": "f3ee3e018a620b945d71891fba17f37d97188de227cb60e60746d10345032d6e"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat-cpu/gsplat_cpu.cpp",
+      "bytes": 36895,
+      "sha256": "c9171aab23c1252b98a87b1a151acf2ad0f0de17a9f9844d8fd62d15fda3c9d4"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat-metal/bindings.h",
+      "bytes": 6190,
+      "sha256": "d9a6713d8a67b5aedea7f2f4405c3145a22c50ba88b73a91cedfd2a3f16acfda"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat-metal/gsplat_metal.metal",
+      "bytes": 68080,
+      "sha256": "fbe32b6a1076166d98b4a6095055626dfa6d07466636d60b5371940e726f48a5"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/rasterizer/gsplat-metal/gsplat_metal.mm",
+      "bytes": 40977,
+      "sha256": "fe9a68b7a2ab7c6f6bbce282004792496e98792624f763ab9ec06c0d8ef57d29"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/simple_trainer.cpp",
+      "bytes": 7989,
+      "sha256": "8f0893271f7fc96a43a4da01516ca2c79febf6ec475596db347e0b4f18499bc0"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/spherical_harmonics.cpp",
+      "bytes": 2096,
+      "sha256": "24224cba52f8e2238c1bfc0829f0f3504c42b58a31d75789eb8c05a3cf0106e4"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/spherical_harmonics.hpp",
+      "bytes": 824,
+      "sha256": "6c90a0487f6d2d59e4407193c45c4d6f0c1ceb160504bd4968deb998450c5da4"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/ssim.cpp",
+      "bytes": 3428,
+      "sha256": "d14127a57ea0735943fb276c99fc81bc4fbeee8458fda091752ae1d7d1813930"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/ssim.hpp",
+      "bytes": 568,
+      "sha256": "8bfebec57c35f8f38b98f02bedab7e27db9f5fbe566b9f6e3245a66dcd38c9fc"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/sysinfo.cpp",
+      "bytes": 2898,
+      "sha256": "7c840ce6ee26cac74d4e1012db278fbcb52919bc9fda0beffa7e29e56d9b6399"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/sysinfo.hpp",
+      "bytes": 290,
+      "sha256": "2553c6d22f553a75a3cbb5bcd82a27bb4c17effec876e371ab02c95d40a90930"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/tensor_math.cpp",
+      "bytes": 3094,
+      "sha256": "1450c9fa7f04c74b61a5f01cdebf37af7670620ae8d2f32a6945f51a950e9e4b"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/tensor_math.hpp",
+      "bytes": 421,
+      "sha256": "4eb1abf1d258fb75b15a142afbf24b0c53d12e50de4147c5ea6e3131cc204dd4"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/tile_bounds.hpp",
+      "bytes": 118,
+      "sha256": "4bc9875c336af35410d1875a34e68b648cf8f2013f9fb9f3f5019510e11f370c"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/undistort.cpp",
+      "bytes": 7017,
+      "sha256": "19ab8dd4b29bbacb5f1663011fad6e513647147d9175f83ca5d30bef30212901"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/undistort.hpp",
+      "bytes": 754,
+      "sha256": "9f69850d10ebeaf8d64665b80bb5e9524160377a60a2a3ea01d1fa8f0bd39ed2"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/utils.hpp",
+      "bytes": 2616,
+      "sha256": "e643db4c0486353ead2f7f05340fc9a753e48d05f9988438951e2207cec908d9"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/cxxopts/LICENSE",
+      "bytes": 1055,
+      "sha256": "aa324fbe633a96546bebca975fbbab65caa175894bd00cfa13d7335e7363400c"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/cxxopts/cxxopts.hpp",
+      "bytes": 58677,
+      "sha256": "0b3b942bb434133c38c58678c01ee798c8e51732a7d456c5539a78ec7e48e563"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/miniz/CMakeLists.txt",
+      "bytes": 172,
+      "sha256": "e25c7669b03738c55cbecd1df4512554d6fea907b7d80b8af6c17e33119590a6"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/miniz/LICENSE",
+      "bytes": 1162,
+      "sha256": "6f20fa7672b00e2e975c291df737cf227addf3ad32e36fef3fe0f416e4664d3d"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/miniz/miniz.c",
+      "bytes": 350352,
+      "sha256": "e2c1aeb66eef9191d8c3feb164db2def2335a61d039bf04ed849f6b042433b30"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/miniz/miniz.h",
+      "bytes": 76822,
+      "sha256": "b53b62ed122e559b8f679e3cb787a0b0035fe87a58f909da0e44931678f4e85f"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/nanoflann/LICENSE",
+      "bytes": 1482,
+      "sha256": "f8efea042b89cc7534abf51888747f87595e1616c63f0b42a2ead81da34e0237"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/nanoflann/nanoflann.hpp",
+      "bytes": 92317,
+      "sha256": "2d1ca5d59ace41f7f6e778d8dce6d7d79f51f7d22c67fae04ef29cf1ca71259a"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/nlohmann/LICENSE",
+      "bytes": 1076,
+      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/nlohmann/json.hpp",
+      "bytes": 919975,
+      "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/nlohmann/json_fwd.hpp",
+      "bytes": 6340,
+      "sha256": "5cefbba751baf5243033fd894c70be9b37103d64b3d3a959e4173197d71137b9"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/spz/CMakeLists.txt",
+      "bytes": 317,
+      "sha256": "e0f704f8b77fd754e70b7b2bfbc32974be003a9d5393b4d837dd845dbbd028a9"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/spz/LICENSE",
+      "bytes": 1069,
+      "sha256": "d2b852220d1043148f523c4154e8bf7d9c5e419aede33b4c94115cfc457e4714"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/spz/load-spz.cc",
+      "bytes": 56435,
+      "sha256": "66d42e2a0d66bab6c0a7cde19d65cd49a96840928bb1b9aedbcb7964e5c407ce"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/spz/load-spz.h",
+      "bytes": 7617,
+      "sha256": "2406981962dd1c78bcae9665f1d02095133e9b0e246b1a4b3e3e0ebd173d7359"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/spz/splat-c-types.h",
+      "bytes": 1914,
+      "sha256": "726aa56d344821e665db4e0191b67e2d34b24395629cc0bc824f06b28ccd6ee6"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/spz/splat-types.cc",
+      "bytes": 4003,
+      "sha256": "c91f19bb96fbf89393bd07c336c93d96f5990dda12e348defbbf089f434cab7c"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/spz/splat-types.h",
+      "bytes": 21271,
+      "sha256": "a892a9b646b94dfef5ea76cd0b6a90471ea7fe5d0401ff46e9b76f74f37c0701"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/spz/splat-utils.h",
+      "bytes": 4653,
+      "sha256": "bd61c7418d880ac909e9df14f8c8626fd9ee0e4cf740ce9a14e0c0e843ce4ab9"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/tinyglm/LICENSE",
+      "bytes": 2865,
+      "sha256": "62d2d642c7d054d4fb4c9b42faad617d6c88fcd91e317f8035aa9f277cc159c3"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/tinyglm/tinyglm.hpp",
+      "bytes": 4760,
+      "sha256": "531fbc5f463a7d756cbd0ad943951ca78b2f3b33f40d60d815efed37150dd512"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/CMakeLists.txt",
+      "bytes": 618,
+      "sha256": "ef491d8fd95e63d3ed5c5cb52ad8f549de1ed2d4a871b71f8521bc306b4efc89"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/LICENSE",
+      "bytes": 1549,
+      "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/allocations.h",
+      "bytes": 1637,
+      "sha256": "6a718e8edaca112abdc0bdfa7de67edefaa44c8d9e514b79672ab58ab3a9118a"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/bits.h",
+      "bytes": 6226,
+      "sha256": "84447179d20e90fcb7ace6358ad79c1e1b978bc86f68568529ed24ca1777b49e"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/bitstream.h",
+      "bytes": 18477,
+      "sha256": "da39374e05a064b4ce949afd1f3014e03b7a493064c4a0775b0b74dd95265b03"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/compiler.h",
+      "bytes": 16139,
+      "sha256": "448fb9e526c7543584f1e7f18f9cb831b965489aef50e0332e954b6d7b05a2ac"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/cpu.h",
+      "bytes": 5393,
+      "sha256": "e85b8b862de4e8c1cdfe147bc700b56b1458f379a2e397015da256ed097e26da"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/debug.c",
+      "bytes": 1091,
+      "sha256": "7ab1ea104acf3243fc1cd4e6d2514046f1dfc1101c7c676145c8da080e8c24ca"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/debug.h",
+      "bytes": 4009,
+      "sha256": "b34bd2c5b98240dea0f45c95393d83fbb7a81869e771f68afd51be62c58ce4da"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/entropy_common.c",
+      "bytes": 13308,
+      "sha256": "7dfce29c6bc807645b1f0c373dad94bbb49603b175a84e72d1739bf9df65feb8"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/error_private.c",
+      "bytes": 3797,
+      "sha256": "749261716f8628275149880d88c8862207d2f7a550a4f84ef37710abb78a3bcc"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/error_private.h",
+      "bytes": 6523,
+      "sha256": "0876b5239b27f5da3cda92f08ce36866f8ff02c27039b4d9f73cc2d9d7194630"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/fse.h",
+      "bytes": 30128,
+      "sha256": "b1a506866ff950c3fd8e72b3a09428c38e3748c645ebbbaee53ff3293adb39f3"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/fse_decompress.c",
+      "bytes": 12383,
+      "sha256": "5859436a8649a3ff7b28978d6d76d06c5879d68c861797f5cc07c4689287f52d"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/huf.h",
+      "bytes": 14203,
+      "sha256": "102af0b4c57825ec693193b3df045ef7d4de5afc187d05d2c65d28722fc0e05f"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/mem.h",
+      "bytes": 12855,
+      "sha256": "fc14002849418c9169524d19cd6f26768f7d3bae1c8aec3ddd130adf103bc406"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/pool.c",
+      "bytes": 11782,
+      "sha256": "9431e26cf7ca46ffb878f17df31198046664d592ae208dfbe3715e82b87af79d"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/pool.h",
+      "bytes": 2653,
+      "sha256": "eab8f79d61c662b8bf5123ea850bd7d64c53e5fe974e997e7fcb67027ff03eda"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/portability_macros.h",
+      "bytes": 4487,
+      "sha256": "06ee0244cb0b07b6a38fb570387ca4abecbcf7fc1e90670d8b00e5454d4cbaac"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/threading.c",
+      "bytes": 4886,
+      "sha256": "50448323b46a8e1bde042ee88ec44fcfc646f3d4aeba8a06be54d26a710ed78d"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/threading.h",
+      "bytes": 5195,
+      "sha256": "05ca16720ca4686998d599088654fc98673451b5691a500cb9dc163b26c8fe32"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/xxhash.c",
+      "bytes": 607,
+      "sha256": "8444d064922f434b67b708a987981aa21dfeece735b48c82d31f7027d0ccef03"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/xxhash.h",
+      "bytes": 261469,
+      "sha256": "3b93d3e9d5ae536f05d25e8ff8717c105e2bcd151a802994d2e4870fde14b276"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/zstd_common.c",
+      "bytes": 1683,
+      "sha256": "f49eb8023a90d3de925373bd9ee0d36ed46b26c529840b64220397446cd73795"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/zstd_deps.h",
+      "bytes": 2508,
+      "sha256": "6b57771c66247b2e5f15cf5e9a781128f885b33a0023d93f5822e67626962816"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/zstd_internal.h",
+      "bytes": 13302,
+      "sha256": "f0af98b15743a3d19ac4a3069cccac3a0f6985b7a4e88759390ad1580891ef34"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/common/zstd_trace.h",
+      "bytes": 4619,
+      "sha256": "eb1251bbb9091edb00b96987236b50bc11fb707807de3a83337f53fd6e231728"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/clevels.h",
+      "bytes": 6860,
+      "sha256": "d764daa89b7a636d26fe96ff3536c5075e9867fb5dddbf8c9d57023a8ff4a155"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/fse_compress.c",
+      "bytes": 24103,
+      "sha256": "5070807a489757b87c1e1f50332b099e8ffe22971228218111eef64d3321ae82"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/hist.c",
+      "bytes": 7448,
+      "sha256": "154e5efd4f3cf8a4e6f29db6463fd3aa4e3694ae9b9c73e5c275a6cb1e3fefe1"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/hist.h",
+      "bytes": 3448,
+      "sha256": "8dd30d7687fe59f8a3a5188dd36911bc1cf1211839e8c49afa1df8a8678fcada"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/huf_compress.c",
+      "bytes": 58546,
+      "sha256": "0be78471f5175e49bbacb898d8b107bb8f7e13adc84780e0625be5861f016086"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_compress.c",
+      "bytes": 316523,
+      "sha256": "ca09a08cf57d8422c0fd0722328844cf3a8ece039bed7acc74788cffe5513bab"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_compress_internal.h",
+      "bytes": 64795,
+      "sha256": "db4e7da7d108ef4091a6b88e6dc4fc11ba9e7e7c6f649db96dd05141b6fd29c6"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_compress_literals.c",
+      "bytes": 9155,
+      "sha256": "c38586b65c69a1906e750bea5a49785b3502b1f52698eee597a4d037b2d9080f"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_compress_literals.h",
+      "bytes": 1613,
+      "sha256": "02270cd6bc060279217861776a53adb67f8d7e54f47f59d2a4ddcef2e705fe2d"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_compress_sequences.c",
+      "bytes": 20004,
+      "sha256": "b3685e8b987944206c9d92e5d3c773b73c1c03f4fbb970d8e62f0d6de2b16010"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_compress_sequences.h",
+      "bytes": 2175,
+      "sha256": "a119b546cc28baed798c3da181861500487229b61c379380b600adf41eb8f21e"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_compress_superblock.c",
+      "bytes": 34107,
+      "sha256": "0e06f3644aff7afc3969fd4ef95a8cebe0d3cc9283b433de763749c7ed9575a7"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_compress_superblock.h",
+      "bytes": 1168,
+      "sha256": "6b097999ea1d91776ca5a12e5ee02c1ed15edfcd31ba07b9ada94b0955195677"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_cwksp.h",
+      "bytes": 28082,
+      "sha256": "2e4dbd27eb534255f5ad5e0fb059f5a92d45e75912592de5aff75e0736e332a2"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_double_fast.c",
+      "bytes": 34741,
+      "sha256": "fab109dd11bed835163011b831817bbdef1baccb7a961354e17aecf683078a6f"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_double_fast.h",
+      "bytes": 1850,
+      "sha256": "b03209947516fecd3f984d27d275406254a787d201d91e3c6bb8c717641e3d8c"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_fast.c",
+      "bytes": 37116,
+      "sha256": "f59b6fbdf5a3f64f4b29070ef8dbec8144b50723830e9cc225bea097a1ac2ad7"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_fast.h",
+      "bytes": 1261,
+      "sha256": "a40a5e53ecc259bb8e05bc6a81980de26b4f1bae41fe6c2df53b6d1d39a325a4"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_lazy.c",
+      "bytes": 103138,
+      "sha256": "21b0540035c276a6b15f01e0c92835947c5a6163dae92cce55d11145e5ba201f"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_lazy.h",
+      "bytes": 9768,
+      "sha256": "64ef18e70fb7c0c3d07dee2bef5e7e58e9d4f33f6ba782a4e9e6abee4c695e07"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_ldm.c",
+      "bytes": 28610,
+      "sha256": "56f7d3943ff22a7fce01b0da24849a972e0de3bd0923feb96f8c963747b26352"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_ldm.h",
+      "bytes": 4448,
+      "sha256": "f06522debac7eb19b97bb0fa531f209cd06bd42a8636bb6139454923980125b5"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_ldm_geartab.h",
+      "bytes": 6077,
+      "sha256": "7285ac8ba1f0fa57a8cd8158bd427ded4e70e32a58e73b57c420b83a76e5e6e3"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_opt.c",
+      "bytes": 71896,
+      "sha256": "df173fc9ea42299af1d06bf0916b3ed79a3ef8726eed7b3b34abb9c190c679aa"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstd_opt.h",
+      "bytes": 3129,
+      "sha256": "900ea3f8942367b72cc41918e4dff268ae75cc66fc64fa4f7be065f9af966740"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstdmt_compress.c",
+      "bytes": 82559,
+      "sha256": "187a79d4886ecbbd4dcd7ea4e262800a858394901f360e5bdabfd0634f858844"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/compress/zstdmt_compress.h",
+      "bytes": 4663,
+      "sha256": "43838192752506a16afc054ec83580995d0cab4a53ef245720f5241ac1289b75"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/decompress/huf_decompress.c",
+      "bytes": 76910,
+      "sha256": "710a88d877d5dc5c83a4f839392996f337ec81cf38006c4a5be6042de5b54828"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/decompress/huf_decompress_amd64.S",
+      "bytes": 15018,
+      "sha256": "b98dce6a6e26ebf599cbf639640a0539896e1ab789c430dffa213f27c5bc81a8"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/decompress/zstd_ddict.c",
+      "bytes": 9182,
+      "sha256": "38bf812283d61f4cd1f6aea30f84b43317418257c4e6fc198b09b436bd484397"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/decompress/zstd_ddict.h",
+      "bytes": 1319,
+      "sha256": "a97a250fd2f956e3ae419ddde68ae1f9fe4025bc0373254058d31bbd352fa71c"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/decompress/zstd_decompress.c",
+      "bytes": 102233,
+      "sha256": "78ea73622a5fee550ac7ffcafa32408122728a9be2c94cab35093a5558ce8e16"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/decompress/zstd_decompress_block.c",
+      "bytes": 101760,
+      "sha256": "f7fdc32c64dfb0246e34bc82419ab3de4b570e529fd0c0eb5d7957fe85e41f2c"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/decompress/zstd_decompress_block.h",
+      "bytes": 2682,
+      "sha256": "62ee0c6ae3f7353020538397f436b59743da8acb922068841b346f480f7078ac"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/decompress/zstd_decompress_internal.h",
+      "bytes": 9687,
+      "sha256": "30c8c8cc5c1956e78a73e399aeb6ab4e42952b24d5bb05a9c50da62a421fc13a"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/zstd.h",
+      "bytes": 175838,
+      "sha256": "4fab9cf39160cd15fbd9fbc2fd637ee300002fa70e307f85e8a7e45c1e057906"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/vendor/zstd/zstd_errors.h",
+      "bytes": 4532,
+      "sha256": "36dbd0a595852e10ff5b52992294f610055b8781101f4634036e05cf7d4bb506"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/visualizer.cpp",
+      "bytes": 5316,
+      "sha256": "c2c70b6cfe885375fb8b35935cd7a2c32b561129c5b8dc300d4ee05da9544092"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/visualizer.hpp",
+      "bytes": 1657,
+      "sha256": "b8f56d48b53a2997d1f86f197408c10ea288612bf17acee75b356232bc356d7e"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/zip_utils.cpp",
+      "bytes": 4744,
+      "sha256": "ca433ee8e9471fc9870e8796738a149ad2dbf42d1b704408e3fe14671845207a"
+    },
+    {
+      "path": "tools/OpenSplat-1.2.2/zip_utils.hpp",
+      "bytes": 314,
+      "sha256": "06031fe79a15250700d46aa42b88d28b5c3a27e76b1538ba230a5e19fedc6a1c"
+    }
+  ]
+}
