@@ -4,6 +4,11 @@ This branch preserves the research source as of 2026-11-03. It is separate from
 the older `PD-Insighter-Demo` repository. The matching data snapshot is
 `PD_Insighter_Reproduction_20261101`; code and data have separate version dates.
 
+For the shortest path to opening the saved dashboard, see the
+[Collaborator Quick Start](docs/reproduction/QUICK_START.md). A complete OneDrive
+download already contains snapshot code; cloning GitHub is an alternative, not
+a required extra step. Use GitHub for separately versioned ongoing development.
+
 ## What Is Here
 
 - `scripts/`: synchronization, automatic classification, stride and transition

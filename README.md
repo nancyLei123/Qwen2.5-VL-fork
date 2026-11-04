@@ -5,7 +5,8 @@ analysis scripts, dashboard templates, tests, and supporting source code.
 Recordings, annotations, saved results, and trained scenes remain in restricted
 OneDrive storage, not in this branch.
 
-**Start here:** [PD Insighter setup](PD_INSIGHTER.md) |
+**Start here:** [Collaborator quick start](docs/reproduction/QUICK_START.md) |
+[Technical setup](PD_INSIGHTER.md) |
 [OneDrive data locations](docs/reproduction/DATA_LOCATIONS.md).
 
 The original Qwen README and attribution are preserved below. This research
