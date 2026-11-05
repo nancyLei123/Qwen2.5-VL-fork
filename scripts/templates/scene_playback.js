@@ -3,8 +3,12 @@ import {LineSegments2} from '/Qwen2.5-VL-fork/vendor/gaussian-viewer/node_module
 import {LineSegmentsGeometry} from '/Qwen2.5-VL-fork/vendor/gaussian-viewer/node_modules/three/examples/jsm/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from '/Qwen2.5-VL-fork/vendor/gaussian-viewer/node_modules/three/examples/jsm/lines/LineMaterial.js';
 import {chooseSceneModels} from './scene_playback_quality.mjs';
-import {AnchoredCameraView, ViewTap} from './scene_camera_view.mjs';
+import {AnchoredCameraView, ViewTap, disableViewerDebugOverlays} from './scene_camera_view.mjs';
 import {SpatialOverview} from './scene_spatial_overview.mjs';
+import {PoseFigure, RecordedViewFrame, supportsPoseFigure, FIGURE_NOTE, roomObserverRig, illustrativeMotionTrack, stridePreviewAt} from './scene_pose_figure.mjs';
+import {CameraFootprint, validateFootprint, sha256Text} from './scene_view_footprint.mjs';
+import {GaussianSurfaceVisibility} from './scene_surface_visibility.mjs';
+import {compatibleGait, gaitWindowAt, gaitMotionAt, evidenceTimeAt, EvidenceClip} from './scene_gait_fusion.mjs';
 import {routeSegments, nearestRouteTime, routeWindow, nearbyRouteWindow, moveOrbitAnchor, playbackSceneModel} from './scene_route_navigation.mjs';
 import {clamp, frameAt, recordingAt, sceneAt, labelAt, recordingToVideo, formatTime, formatExactTime, playbackCoverage, PlaybackTransport, SceneQueue, waitForSplatTree} from './scene_playback_core.mjs';
 
@@ -22,8 +26,73 @@ const fetchJSON = async url => {
 };
 
 async function main() {
-  const data = await fetchJSON('scene_playback_data.json');
+  const playbackResponse = await fetch('scene_playback_data.json', {cache: 'no-cache'});
+  if (!playbackResponse.ok) throw new Error(`Playback data: HTTP ${playbackResponse.status}`);
+  const playbackText = await playbackResponse.text();
+  const data = JSON.parse(playbackText);
   const hasActionTracks = !data.labels_not_applicable;
+  const hasPoseFigure = supportsPoseFigure(data);
+  let figureDisplay = 'figure';
+  let footMotion = 'illustrative', stridePreview = null, gait = null, currentGaitMotion = null;
+  let gaitPlaybackEnd = null;
+  const evidenceClip = new EvidenceClip($('downwardEvidence'));
+  const gaitTicks = [], gaitCursors = [];
+  const motionTrack = hasPoseFigure ? illustrativeMotionTrack(data) : [];
+  $('figurePanel').hidden = $('roomView').hidden = !hasPoseFigure;
+  if (hasPoseFigure) {
+    $('figureMethod').textContent = FIGURE_NOTE;
+    $('staticSceneNote').textContent = 'The room is static; the head follows the calibrated camera pose. Video-cued legs use preliminary shoe-phase observations in short review windows. Body posture, lift and foot contacts are not measured. Missing evidence is not filled with a walking cycle.';
+    try {
+      const candidate = await fetchJSON('room_gait_fusion.json');
+      if (!compatibleGait(candidate, data)) throw new Error('Gait evidence belongs to another recording');
+      gait = candidate;
+      footMotion = 'video_slam';
+      $('footMotion').querySelector('option[value="video_slam"]').disabled = false;
+      $('footMotion').value = footMotion;
+      $('gaitPanel').hidden = $('gaitEvidence').hidden = false;
+      document.querySelector('.workspace').classList.add('gait-enabled');
+      $('downwardEvidence').src = gait.clip.url;
+      $('gaitSeek').min = gait.clip.start_s; $('gaitSeek').max = gait.clip.end_s - 1 / data.fps;
+      $('gaitSummary').textContent = `${gait.summary.cue_count} visually reviewed shoe cues in ${gait.summary.window_count} short windows (${gait.summary.review_window_seconds.toFixed(1)} s). Not full-session tracking. Timing and foot side need human review.`;
+      $('gaitMethod').textContent = `${gait.annotation_method}. ${gait.method} ${gait.display_prior} ${gait.limitations}`;
+      $('gaitSyncNote').textContent = `Downward begins about ${gait.sync.recording_offset_s.toFixed(2)} s after Aria. ${gait.sync.strong_windows} audio windows agree (maximum fit residual ${(gait.sync.max_fit_residual_s * 1000).toFixed(1)} ms). This checks clock alignment, NOT foot-event accuracy; video cues were reviewed at 0.2 s intervals.`;
+      for (const window of gait.windows) $('gaitExample').add(new Option(`${window.title} / ${formatTime(window.start_s)}-${formatTime(window.end_s)}`, window.id));
+      const percent = t => 100 * (t - gait.clip.start_s) / (gait.clip.end_s - gait.clip.start_s);
+      for (const [side, id, color] of [['left', 'gaitLeft', '#48b9dc'], ['right', 'gaitRight', '#e9a34d']]) {
+        const lane = $(id);
+        for (const window of gait.windows) {
+          const cycles = window.cycles.filter(c => c.side === side);
+          for (const cycle of cycles) {
+            const band = document.createElement('span'); band.className = 'band';
+            band.style.cssText = `left:${percent(cycle.start_s)}%;width:${percent(cycle.end_s) - percent(cycle.start_s)}%;background:${color}`;
+            lane.append(band);
+          }
+          for (const cue of window.cues.filter(c => c.side === side)) {
+            const button = document.createElement('button');
+            button.style.cssText = `left:${percent(cue.time_s)}%;background:${color}`;
+            button.title = button.ariaLabel = `${side} forward-shoe cue at ${formatExactTime(cue.time_s)}, approximate, not foot contact`;
+            button.onclick = () => { transport.setPlaying(false); seekTo(cue.time_s); };
+            lane.append(button); gaitTicks.push({button, cue});
+          }
+        }
+        const cursor = document.createElement('span'); cursor.className = 'cursor'; lane.append(cursor); gaitCursors.push(cursor);
+      }
+    } catch (error) {
+      $('footStatus').textContent = 'Video-cued prototype unavailable; illustrative mode is not foot tracking.';
+      console.warn('Optional gait evidence:', error.message);
+    }
+    try {
+      const preview = await fetchJSON('room_stride_preview.json');
+      if (preview.trial_id !== data.trial_id || preview.graph_uid !== data.provenance.graph_uid
+        || preview.duration_s !== data.duration_s || preview.fps !== data.fps) throw new Error('Stride preview belongs to another recording');
+      stridePreview = preview;
+      $('stridePreviewSummary').textContent = `${preview.summary.candidate_windows} candidate window(s) / ${preview.summary.windows_screened} screened. ${preview.summary.candidate_seconds.toFixed(1)} seconds pass conservative rhythm and direction checks; this is NOT walking-time coverage or validated accuracy.`;
+      for (const bout of preview.bouts) $('strideCandidate').add(new Option(`${formatTime(bout.start_s)} - ${formatTime(bout.end_s)} / unvalidated`, String(bout.id)));
+      $('strideCandidate').disabled = !preview.bouts.length;
+    } catch {
+      $('stridePreviewSummary').textContent = 'Stride preview unavailable. Illustrative feet can still show route movement; they are not stride estimates.';
+    }
+  }
   $('videoClockBadge').textContent = data.video_time_label || 'Original recording';
   const parameters = new URLSearchParams(location.search);
   let jointScene = null, assembly = 'submaps';
@@ -70,18 +139,13 @@ async function main() {
   if (!qualityBase) $('coverageExplanation').textContent = `Green 3D regions: ${data.scenes.length} trained submaps. Amber stripes: not reconstructed. Choose a scene from the menu to inspect it. Missing model coverage does not mean video is missing. Very short pose gaps have a minimum 4 px marker; hover or open the gap list for exact times.`;
   if (data.coverage_summary) {
     const {scope_s, model_seconds} = data.coverage_summary;
-    $('coverageExplanation').textContent = `First ${scope_s / 60} minutes: ${(100 * model_seconds / scope_s).toFixed(1)}% trained-model time coverage across ${data.scenes.length} submaps. This does not mean complete surfaces or views in every direction. Amber stripes mark untrained intervals; camera-pose gaps remain separate. ${$('coverageExplanation').textContent}`;
+    $('coverageExplanation').textContent = `${(scope_s / 60).toFixed(1)}-minute scope: ${(100 * model_seconds / scope_s).toFixed(1)}% trained-model time coverage across ${data.scenes.length} submaps. This does not mean complete surfaces or views in every direction. Amber stripes mark untrained intervals; camera-pose gaps remain separate. ${$('coverageExplanation').textContent}`;
     if (scope_s >= 1800) $('routeScope').add(new Option('First 30 minutes', 'first30'));
   }
   $('audioNote').textContent = data.video_has_audio
-    ? 'Aligned camera time; image crops can differ. Audio starts muted.'
+    ? 'Aligned camera time; image crops can differ. Use Audio On / Off to control sound.'
     : 'Aligned camera time; image crops can differ. This review copy has no audio.';
-  $('audioToggle').hidden = !data.video_has_audio;
-  $('audioToggle').onclick = () => {
-    video.muted = !video.muted;
-    $('audioToggle').textContent = video.muted ? 'Sound off' : 'Sound on';
-    $('audioToggle').setAttribute('aria-pressed', String(!video.muted));
-  };
+  // The shared page audio controller owns the button and actual media state.
   // Optional display-only compatibility assets never replace the source models.
   try {
     const compatibility = qualityBase ? await fetchJSON(`${qualityBase}/viewer_compat/manifest.json`) : {};
@@ -134,15 +198,34 @@ async function main() {
   });
   viewer.controls.enableDamping = false;
   if (viewer.controls.stopListenToKeyEvents) viewer.controls.stopListenToKeyEvents();
-  const eye = new THREE.PerspectiveCamera(90, 1, 0.06, 0.65);
-  const frustum = new THREE.CameraHelper(eye);
-  const gold = new THREE.Color('#f5ce72'), pale = new THREE.Color('#bddcd0');
-  frustum.setColors(gold, gold, gold, pale, pale);
-  frustum.material.depthTest = false;
-  geometry.add(frustum);
+  disableViewerDebugOverlays(viewer, window);
   const marker = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), new THREE.MeshBasicMaterial({color: '#25d093', depthTest: false}));
-  const directionArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 0.9, '#ed9b40', 0.2, 0.1);
-  geometry.add(marker, directionArrow);
+  geometry.add(marker);
+  const recordedViewFrame = new RecordedViewFrame(THREE);
+  geometry.add(recordedViewFrame.object);
+  const figure = hasPoseFigure ? new PoseFigure(THREE) : null;
+  if (figure) geometry.add(figure.root, figure.trail);
+  const viewFootprint = hasPoseFigure ? new CameraFootprint(THREE, data, geometry, {
+    mode:$('viewConnectionMode'),reach:$('viewReach'),reachLabel:$('viewReachLabel'),
+    status:$('viewConnectionStatus'),audit:$('viewAlignmentAudit'),overlay:$('viewVideoOverlay'),stage:$('sceneStage'),
+  }) : null;
+  const surfaceVisibility = hasPoseFigure ? new GaussianSurfaceVisibility(THREE, viewer, data, {
+    stage:$('sceneStage'),status:$('viewConnectionStatus'),
+  }) : null;
+  if (viewFootprint) {
+    $('viewConnection').hidden = $('viewVideoKey').hidden = false;
+    (async () => {
+      try {
+        const payload = await fetchJSON('view_footprint/footprint_data.json');
+        const validated = validateFootprint(payload, data, await sha256Text(playbackText));
+        viewFootprint.install(validated);
+        surfaceVisibility.install(validated);
+      } catch (error) {
+        surfaceVisibility.fail(error);
+        $('viewConnectionStatus').textContent = `Camera footprint unavailable: ${error.message} Playback remains available; no intersections are inferred.`;
+      }
+    })();
+  }
   const position = new THREE.Vector3(), orientation = new THREE.Quaternion();
   const forward = new THREE.Vector3(), up = new THREE.Vector3();
   const poseAt = time => data.poses[frameAt(time, data)];
@@ -166,6 +249,8 @@ async function main() {
   function updatePlayText() {
     $('play').textContent = transport.wantsPlay ? (transport.buffering ? 'Pause (loading)' : 'Pause') : 'Play';
     $('play').setAttribute('aria-label', transport.wantsPlay ? 'Pause playback' : 'Play synchronized recording');
+    $('figurePlay').textContent = $('play').textContent;
+    $('figurePlay').setAttribute('aria-label', transport.wantsPlay ? 'Pause person playback' : 'Play person playback');
   }
   const queue = new SceneQueue(async scene => {
     const index = viewer.getSceneCount();
@@ -211,23 +296,28 @@ async function main() {
     } else if (loadedStatus === 'ready') {
       overlay.hidden = true;
       const estimated = data.pose_status?.[frameAt(video.currentTime, data)] === 'interpolated_short_gap';
-      $('sceneStatus').textContent = `${viewMode === 'follow' ? 'Recorded Aria viewpoint' : viewMode === 'context' ? 'Around the camera / close view' : 'Nearby route / moving camera'}${estimated ? ' (estimated pose)' : ''}`;
+      $('sceneStatus').textContent = `${viewMode === 'follow' ? 'Recorded Aria viewpoint' : viewMode === 'room' ? 'Person in room / fixed observer' : viewMode === 'context' ? 'Around the camera / close view' : 'Nearby route / moving camera'}${estimated ? ' (estimated pose)' : ''}`;
     }
   }
 
   function updateCamera(time) {
     currentPose = poseAt(time);
-    marker.visible = directionArrow.visible = frustum.visible = false;
+    marker.visible = false;
+    const modelCamera = currentScene?.camera || {height: 1024, fy: 512};
+    const fov = 2 * Math.atan(modelCamera.height / (2 * modelCamera.fy)) * 180 / Math.PI;
+    if (figure) {
+      currentGaitMotion = gaitMotionAt(gait, time, currentPose);
+      figure.body.visible = figureDisplay === 'figure';
+      figure.update(currentPose, viewMode !== 'follow' && figureDisplay !== 'point',
+        figureDisplay !== 'figure' ? null : footMotion === 'video_slam' ? currentGaitMotion
+          : footMotion === 'illustrative' ? motionTrack[frameAt(time, data)] : null);
+      figure.updateTrail(data, time);
+    }
     if (!currentPose) return;
     position.fromArray(currentPose); orientation.fromArray(currentPose, 3);
     forward.set(0, 0, -1).applyQuaternion(orientation);
     up.set(0, 1, 0).applyQuaternion(orientation);
-    const modelCamera = currentScene?.camera || {height: 1024, fy: 512};
-    const fov = 2 * Math.atan(modelCamera.height / (2 * modelCamera.fy)) * 180 / Math.PI;
-    eye.fov = fov; eye.updateProjectionMatrix();
-    eye.position.copy(position); eye.quaternion.copy(orientation); eye.updateMatrixWorld(true);
-    frustum.update(); marker.position.copy(position);
-    directionArrow.position.copy(position); directionArrow.setDirection(forward);
+    marker.position.copy(position);
     if (viewMode === 'follow') {
       camera.position.copy(position); camera.quaternion.copy(orientation); camera.up.copy(up);
       viewer.controls.target.copy(position).addScaledVector(forward, 3);
@@ -236,57 +326,103 @@ async function main() {
       orbitAnchor = null;
     } else {
       if (!orbitAnchor) resetOrbit();
-      else {
+      else if (viewMode !== 'room') {
         orbitCamera.position.fromArray(moveOrbitAnchor(orbitCamera.position.toArray(), orbitAnchor.toArray(), position.toArray()));
         viewer.controls.target.copy(position);
         orbitAnchor.copy(position);
         orbitCamera.up.copy(worldUp);
         viewer.controls.update();
       }
+      else viewer.controls.update();
       cameraView.apply();
-      marker.visible = directionArrow.visible = frustum.visible = true;
+      marker.visible = !figure || figureDisplay === 'point';
     }
-    $('orbitDistanceLabel').textContent = `${camera.position.distanceTo(position).toFixed(2)} m from camera`;
+    const distanceTarget = viewMode === 'room' ? viewer.controls.target : position;
+    $('orbitDistanceLabel').textContent = `${camera.position.distanceTo(distanceTarget).toFixed(2)} m ${viewMode === 'room' ? 'from pivot' : 'from camera'}`;
+    $('orbitDistance').setAttribute('aria-label', viewMode === 'room' ? 'Distance from fixed room pivot' : 'Distance from recorded camera');
     $('viewAimStatus').hidden = following;
     $('viewAimStatus').textContent = cameraView.locked ? 'Direction held / Reset view to recenter' : 'Drag to orbit / click to look';
   }
+
+  function updateRecordedViewFrame(time) {
+    const model = playbackSceneModel(currentScene, jointScene, assembly, time);
+    const display = figure ? figureDisplay : 'point';
+    recordedViewFrame.update(currentPose, display, viewMode, model?.camera,
+      loadedStatus === 'ready' && Boolean(currentScene) && !video.seeking && video.readyState >= 2);
+    $('viewFrameNote').hidden = display !== 'point' || viewMode === 'follow';
+    const s = recordedViewFrame.spec;
+    $('viewFrameNote').textContent = s
+      ? `Gold viewing frame: ${s.horizontalFov.toFixed(1)} x ${s.verticalFov.toFixed(1)} degrees, from this model's rectified camera intrinsics. At ${s.depth.toFixed(2)} m display depth its size is ${s.width.toFixed(2)} x ${s.height.toFixed(2)} m. Display guide only, not an object distance, full fisheye view, or eye gaze. Independent of the experimental cone controls.`
+      : 'Viewing frame unavailable: this scene has no verified rectified camera intrinsics. No default field of view is inferred.';
+  }
   function resetOrbit() {
     if (!currentPose || viewMode === 'follow') return;
-    const distance = viewMode === 'context' ? .85 : 2.4;
+    let distance = viewMode === 'context' ? .85 : 2.4;
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(orientation);
-    const offset = forward.clone().multiplyScalar(-.85).addScaledVector(right, .28).addScaledVector(worldUp, viewMode === 'context' ? .3 : .75).normalize();
+    const offset = forward.clone().multiplyScalar(-.85).addScaledVector(right, viewMode === 'room' ? .75 : .28).addScaledVector(worldUp, viewMode === 'context' ? .3 : .75).normalize();
+    const rig = viewMode === 'room' ? roomObserverRig(data, currentPose, video.currentTime) : null;
+    const pivot = rig ? new THREE.Vector3(...rig.target) : position;
     // This viewer's OrbitControls also reads the original camera's up axis.
     camera.up.copy(worldUp);
-    orbitCamera.up.copy(worldUp); orbitCamera.position.copy(position).addScaledVector(offset, distance);
+    orbitCamera.up.copy(worldUp); orbitCamera.position.copy(pivot).addScaledVector(offset, distance);
+    if (rig) { orbitCamera.position.fromArray(rig.position); distance = orbitCamera.position.distanceTo(pivot); }
     orbitCamera.fov = 90; orbitCamera.aspect = 1; orbitCamera.updateProjectionMatrix();
-    viewer.controls.target.copy(position); orbitAnchor = position.clone();
+    viewer.controls.target.copy(pivot); orbitAnchor = position.clone();
     viewer.controls.update(); cameraView.reset();
     $('orbitDistance').value = distance;
   }
   function setMode(mode) {
     viewMode = mode; following = mode === 'follow'; viewer.controls.enabled = !following;
     orbitAnchor = null;
-    for (const [id, value] of [['follow', 'follow'], ['explore', 'context'], ['cameraContext', 'route']]) {
+    for (const [id, value] of [['follow', 'follow'], ['explore', 'context'], ['cameraContext', 'route'], ['roomView', 'room']]) {
       $(id).classList.toggle('active', mode === value); $(id).setAttribute('aria-pressed', String(mode === value));
     }
     $('viewHint').textContent = mode === 'follow'
-      ? 'Exact recorded viewpoint. Choose Around camera to see the camera point and its rectangular viewing frustum.'
-      : mode === 'context' ? 'Click to look in a direction and keep it. Drag to orbit around the green camera point; Reset view recenters it. Playback moves your position without resetting your chosen direction. The gold rectangle is the recorded view; unobserved surfaces may be missing.'
-        : 'Click the local line to seek; drag empty space to orbit or click it to look and hold that direction. Reset view recenters the camera point. Teal is before and amber is after the playhead. Playback moves the camera and viewing rectangle together.';
+      ? 'Exact recorded viewpoint. Choose Around camera to see the recorded camera position as a green point.'
+      : mode === 'context' ? 'The green point marks the recorded camera position. Drag to orbit around it; click to look and keep that direction. Reset view recenters it. The point follows playback; unobserved surfaces may be missing.'
+        : 'The green point marks the current camera position. Click the local line to seek; drag empty space to orbit or click to look and hold that direction. Teal is before and amber is after the playhead. The point follows playback.';
+    if (hasPoseFigure) $('viewHint').textContent = mode === 'room'
+      ? 'Fixed observer: the person moves through the room while this view stays still. Drag to orbit; Reset view recenters on the current person. The body guide is not measured posture.'
+      : mode === 'follow' ? 'Exact recorded camera viewpoint. The figure is hidden to avoid blocking the first-person view; choose Person in room to see its movement.'
+        : 'Orbit follows the recorded head position. Head direction remains independent of your viewing angle. Choose Person in room for a fixed view of back-and-forth movement.';
     $('distanceControl').hidden = following;
     updateCamera(video.currentTime);
-    routeLine.visible = !following;
+    routeLine.visible = !following && mode !== 'room';
     routeLine.material.linewidth = mode === 'context' ? 2 : 4;
     updateVisibility();
+    updateRecordedViewFrame(video.currentTime);
+    viewFootprint?.update(frameAt(video.currentTime, data),currentPose,viewMode,loadedStatus === 'ready' && Boolean(currentScene),
+      !video.seeking && video.readyState >= 2);
   }
   $('follow').onclick = () => setMode('follow');
   $('explore').onclick = () => setMode('context');
   $('recenter').onclick = () => { resetOrbit(); updateCamera(video.currentTime); };
   $('cameraContext').onclick = () => setMode('route');
+  $('roomView').onclick = () => setMode('room');
+  $('figureDisplay').onchange = () => { figureDisplay = $('figureDisplay').value; sync(video.currentTime); };
+  $('footMotion').onchange = () => { footMotion = $('footMotion').value; sync(video.currentTime); };
+  function chooseGaitExample(play = false) {
+    const window = gait?.windows.find(w => w.id === $('gaitExample').value);
+    if (!window) return;
+    transport.setPlaying(false); footMotion = 'video_slam'; $('footMotion').value = footMotion;
+    figureDisplay = 'figure'; $('figureDisplay').value = figureDisplay;
+    seekTo(window.start_s + .05); setMode('room');
+    gaitPlaybackEnd = play ? window.end_s : null;
+    if (play) transport.setPlaying(true);
+  }
+  $('gaitExample').onchange = () => chooseGaitExample();
+  $('gaitReplay').onclick = () => chooseGaitExample(true);
+  $('strideCandidate').onchange = () => {
+    const bout = stridePreview?.bouts.find(item => String(item.id) === $('strideCandidate').value);
+    if (!bout) return;
+    transport.setPlaying(false); seekTo(bout.events[1]?.time_s || bout.start_s);
+    setMode('room');
+  };
   $('orbitDistance').oninput = () => {
     if (!currentPose || following) return;
-    const offset = orbitCamera.position.clone().sub(position).normalize();
-    orbitCamera.position.copy(position).addScaledVector(offset, Number($('orbitDistance').value));
+    const pivot = viewMode === 'room' ? viewer.controls.target : position;
+    const offset = orbitCamera.position.clone().sub(pivot).normalize();
+    orbitCamera.position.copy(pivot).addScaledVector(offset, Number($('orbitDistance').value));
     viewer.controls.update(); updateCamera(video.currentTime);
   };
   $('displayQuality').onchange = () => {
@@ -497,6 +633,9 @@ async function main() {
   };
 
   function sync(time) {
+    if (gaitPlaybackEnd !== null && time >= gaitPlaybackEnd) {
+      transport.setPlaying(false); gaitPlaybackEnd = null;
+    }
     const capture = recordingAt(time, data);
     currentScene = sceneAt(capture, data.scenes);
     refreshRoute(time); refreshLocalRoute(time); updateCamera(time);
@@ -517,6 +656,9 @@ async function main() {
       queue.request(desired);
     }
     updateVisibility();
+    updateRecordedViewFrame(time);
+    viewFootprint?.update(frameAt(time, data),currentPose,viewMode,loadedStatus === 'ready' && Boolean(currentScene),
+      !video.seeking && video.readyState >= 2);
     $('sceneAssemblyNote').textContent = model === jointScene && jointScene
       ? `Joint experiment (${jointScene.iterations.toLocaleString()} steps): one static scene trained from all six first-15-minute groups. No model switch at their boundaries. It is not a complete room scan; blur, ghosting and unobserved surfaces remain. Compare with the originals.`
       : assembly.startsWith('joint')
@@ -540,6 +682,47 @@ async function main() {
     if (model) $('sceneDetails').href = model.details_url;
     const dashboard = time + data.dashboard_offset_s;
     $('clock').textContent = `${formatTime(time)} / ${formatTime(data.duration_s)}`;
+    if (hasPoseFigure) {
+      $('figureClock').textContent = formatTime(time);
+      if (!transport.scrubbing) $('figureTime').value = time;
+      const projected = currentPose ? position.clone().project(camera) : null;
+      $('figureStatus').textContent = !currentPose ? 'No supported pose: head and body are hidden, not extrapolated.'
+        : following ? 'Figure hidden in Aria viewpoint. Video and timeline remain synchronized.'
+          : figureDisplay === 'point' ? 'Original point: recorded camera position. The camera-view cone follows its measured orientation; candidate patch hits are experimental, not eye gaze.'
+          : viewMode === 'room' && (Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1 || Math.abs(projected.z) > 1)
+            ? 'Person is outside this fixed view. Reset view to recenter, or use Around camera.'
+            : 'Position and head direction follow the video clock. Body dimensions and posture are illustrative.';
+      $('footStatus').textContent = footMotion === 'off' ? 'Static foot guide. No foot tracking.'
+        : !figure.root.visible || figureDisplay !== 'figure' ? 'Legs are hidden in this view.'
+          : footMotion === 'video_slam' ? (currentGaitMotion
+            ? `Video-cued phase: ${Object.keys(currentGaitMotion.feet).join(' + ')}. Route-scaled movement; lift and joints are illustrative, not measured contacts.`
+            : 'No supported foot phase here. Feet stay neutral, not a claim of standing. Choose a reviewed gait example below.')
+            : figure.legsAnimated ? 'Illustrative feet follow route movement. Timing, left/right identity and foot lift are NOT measured.'
+              : 'Illustrative feet held still: no sustained route translation at this moment. This does not establish whether you took a step.';
+      if (gait) {
+        const evidence = evidenceTimeAt(time, data, gait);
+        evidenceClip.update(evidence?.clip_s ?? null, !video.paused && !video.seeking && !transport.scrubbing, video.playbackRate);
+        const missingVideo = !evidence || $('downwardEvidence').readyState < 2 || $('downwardEvidence').error;
+        $('downwardEvidence').hidden = !!missingVideo;
+        $('gaitMissing').hidden = !missingVideo;
+        $('gaitMissing').textContent = !evidence ? 'Outside the 17-second review clip. Choose a gait example.'
+          : $('downwardEvidence').error ? 'Evidence clip could not load. Foot timing cannot be visually checked here.' : 'Loading synchronized downward video...';
+        $('gaitEvidenceClock').textContent = evidence ? `Downward ${formatTime(evidence.downward_s)}` : 'No review clip at this time';
+        const window = gaitWindowAt(gait, time);
+        const cue = gait.windows.flatMap(w => w.cues).find(c => Math.abs(c.time_s - time) <= gait.timing_review_half_window_s);
+        $('gaitCueReadout').textContent = cue ? `Near ${cue.side} forward-shoe cue / approximate, not foot contact`
+          : window ? 'Between reviewed shoe cues / interpolated foot phase'
+            : evidence ? 'Turn or visibility gap / no gait-phase estimate' : 'No foot evidence reviewed at this time.';
+        if (evidenceClip.error) $('gaitEvidenceStatus').textContent = `Secondary playback issue: ${evidenceClip.error}`;
+        if (!transport.scrubbing) $('gaitSeek').value = clamp(time, gait.clip.start_s, gait.clip.end_s);
+        for (const cursor of gaitCursors) { cursor.hidden = !evidence; cursor.style.left = `${100 * (time - gait.clip.start_s) / (gait.clip.end_s - gait.clip.start_s)}%`; }
+        for (const item of gaitTicks) item.button.setAttribute('aria-current', String(item.cue === cue));
+      }
+      const bout = stridePreviewAt(stridePreview, time);
+      $('strideReadout').textContent = bout
+        ? `Candidate window medians: step proxy ${bout.step_proxy_m.toFixed(3)} m / stride proxy ${bout.stride_proxy_m.toFixed(3)} m. Foot side unknown; video validation pending.`
+        : 'No stride estimate for this time. Review a candidate above; do not infer zero steps from missing estimates.';
+    }
     $('timeDetails').textContent = `VRS capture ${formatTime(capture)} / Dashboard ${dashboard >= 0 && dashboard < data.dashboard_duration_s ? formatTime(dashboard) : 'outside review interval'}`;
     if (!transport.scrubbing) seek.value = time;
     for (const cursor of cursors) cursor.style.left = `${100 * time / data.duration_s}%`;
@@ -573,7 +756,8 @@ async function main() {
       $('routeMarker').setAttribute('cx', x); $('routeMarker').setAttribute('cy', y);
       $('routeDirection').setAttribute('d', `M${x},${y}L${x + forward.x * 24},${y - forward.y * 24}`);
       $('worldPosition').textContent = `RGB camera XYZ: ${currentPose.slice(0, 3).map(n => n.toFixed(2)).join(', ')} m`;
-      $('poseStatus').textContent = following ? '3D view follows camera position, yaw, pitch and roll.' : 'Green point and gold viewing rectangle = recorded camera. Your orbit follows its position; a clicked viewing direction stays held until you change it or Reset view. Aria video retains the recorded direction.';
+      $('poseStatus').textContent = following ? '3D view follows camera position, yaw, pitch and roll.' : 'The green point in the upper 3D scene marks the recorded camera position. Your orbit follows it; a clicked viewing direction stays held until you change it or Reset view. Aria video retains the recorded direction.';
+      if (hasPoseFigure && !following) $('poseStatus').textContent = 'The head is anchored to the calibrated RGB camera position and rotation. The upright body guide follows head heading for readability only, not measured body orientation or eye gaze.';
       if (estimated) $('poseStatus').textContent += ' Estimated pose: short-gap interpolation between reliable MPS anchors; not used for training.';
     } else {
       $('worldPosition').textContent = 'Camera position unavailable';
@@ -590,13 +774,38 @@ async function main() {
     $('sceneStage').dataset.orbitTarget = JSON.stringify(viewer.controls.target.toArray());
     $('sceneStage').dataset.lookOffset = JSON.stringify(cameraView.lookOffset.toArray());
     $('sceneStage').dataset.directionHeld = String(!following && cameraView.locked);
-    $('sceneStage').dataset.frustumVisible = String(frustum.visible);
+    $('sceneStage').dataset.frustumVisible = String(recordedViewFrame.object.visible);
+    $('sceneStage').dataset.frustumPose = recordedViewFrame.object.visible
+      ? JSON.stringify([...recordedViewFrame.camera.position.toArray(), ...recordedViewFrame.camera.quaternion.toArray()]) : '';
+    $('sceneStage').dataset.frustumSpec = recordedViewFrame.spec ? JSON.stringify(recordedViewFrame.spec) : '';
+    $('sceneStage').dataset.footprintVisible = String(viewFootprint?.root.visible || false);
+    $('sceneStage').dataset.footprintConePose = viewFootprint?.root.visible
+      ? JSON.stringify([...viewFootprint.cone.position.toArray(), ...viewFootprint.cone.quaternion.toArray()]) : '';
+    $('sceneStage').dataset.footprintMode = viewFootprint?.mode || 'unavailable';
+    $('sceneStage').dataset.markerVisible = String(marker.visible);
+    $('sceneStage').dataset.markerPosition = currentPose ? JSON.stringify(marker.position.toArray()) : '';
+    $('sceneStage').dataset.meshCursorVisible = String(viewer.sceneHelper.meshCursor.visible);
     $('sceneStage').dataset.localRoute = localKey;
     $('sceneStage').dataset.model = desired?.id || '';
     $('sceneStage').dataset.assembly = assembly;
     $('sceneStage').dataset.loadedModels = viewer.getSceneCount();
+    if (figure) {
+      $('sceneStage').dataset.figureVisible = String(figure.root.visible);
+      $('sceneStage').dataset.figurePosition = figure.root.visible ? JSON.stringify(figure.root.position.toArray()) : '';
+      $('sceneStage').dataset.headQuaternion = figure.root.visible ? JSON.stringify(figure.head.quaternion.toArray()) : '';
+      $('sceneStage').dataset.headForward = figure.root.visible ? JSON.stringify(figure.direction.toArray()) : '';
+      $('sceneStage').dataset.bodyMeasured = 'false';
+      $('sceneStage').dataset.figureDisplay = figureDisplay;
+      $('sceneStage').dataset.trailSegments = String(figure.trailSegments);
+      $('sceneStage').dataset.legsAnimated = String(figure.legsAnimated && figure.body.visible);
+      $('sceneStage').dataset.feetMeasured = 'false';
+      $('sceneStage').dataset.footMode = footMotion;
+      $('sceneStage').dataset.gaitWindow = currentGaitMotion?.window_id || '';
+      $('sceneStage').dataset.footPositions = figure.root.visible ? JSON.stringify(figure.feet.map(foot => foot.getWorldPosition(new THREE.Vector3()).toArray())) : '';
+    }
   }
   function seekTo(time) {
+    gaitPlaybackEnd = null;
     const value = clamp(time, 0, Math.max(0, data.duration_s - 1 / data.fps));
     transport.pauseForSync();
     video.currentTime = value; frameTime = null; sync(value); transport.resume();
@@ -609,6 +818,7 @@ async function main() {
   function beginScrub(event) {
     if (seek.disabled || event.button !== 0 || event.isPrimary === false) return false;
     scrubPointer = event.pointerId;
+    gaitPlaybackEnd = null;
     transport.beginScrub(); frameTime = null;
     return true;
   }
@@ -622,6 +832,12 @@ async function main() {
   seek.onchange = () => {
     if (!transport.scrubbing) transport.setPlaying(true);
   };
+  $('figureTime').onpointerdown = beginScrub;
+  $('figureTime').oninput = () => seekTo(Number($('figureTime').value));
+  $('figureTime').onchange = seek.onchange;
+  $('gaitSeek').onpointerdown = beginScrub;
+  $('gaitSeek').oninput = () => seekTo(Number($('gaitSeek').value));
+  $('gaitSeek').onchange = seek.onchange;
   window.addEventListener('pointerup', event => endScrub(event));
   window.addEventListener('pointercancel', event => endScrub(event, false));
   window.addEventListener('blur', () => { scrubPointer = null; transport.endScrub(false); });
@@ -650,7 +866,8 @@ async function main() {
       }
     };
   }
-  $('play').onclick = togglePlay; video.onclick = togglePlay;
+  $('play').onclick = $('figurePlay').onclick = togglePlay; video.onclick = togglePlay;
+  $('downwardEvidence').onclick = togglePlay;
   for (const [id, delta] of [['back', -1], ['forward', 1]]) $(id).onclick = () => {
     transport.setPlaying(false); seekTo((frameAt(video.currentTime, data) + delta) / data.fps);
   };
@@ -675,14 +892,19 @@ async function main() {
   if (Math.abs(video.duration - data.duration_s) > 1 / data.fps + 0.001) throw new Error('Video duration does not match the frame timestamp table.');
   $('timingMethod').textContent = data.provenance.timing_explanation || `Each video frame is mapped to its original VRS exposure, then to the calibrated RGB pose. The last-frame clock correction is ${data.provenance.video_minus_device_at_last_frame_s.toFixed(3)} s. Dashboard labels retain their existing ${data.dashboard_offset_s.toFixed(6)} s offset from video time. All models use the same MPS world coordinate frame.`;
   for (const id of ['play', 'back', 'forward', 'seek']) $(id).disabled = false;
+  if (hasPoseFigure) for (const id of ['figurePlay', 'figureTime']) $(id).disabled = false;
   for (const id of ['routeSeek','routeBack','routeNext']) $(id).disabled = false;
   for (const item of gapButtons) item.button.disabled = false;
   seek.max = Math.max(0, data.duration_s - 1 / data.fps);
+  $('figureTime').max = seek.max;
   const target = Number(new URLSearchParams(location.search).get('t'));
+  const requestedGait = gait?.windows.find(w => w.id === parameters.get('gait'));
+  if (requestedGait) $('gaitExample').value = requestedGait.id;
   const initialTime = Number.isFinite(target) && target > 0 ? recordingToVideo(target, data)
+    : requestedGait ? requestedGait.start_s + 1
     : (data.initial_video_time_s ?? Math.max(initialIndex / data.fps, -data.dashboard_offset_s + 1));
   seekTo(initialTime);
-  setMode('context');
+  setMode(hasPoseFigure ? 'room' : 'context');
   if (video.requestVideoFrameCallback) {
     const onFrame = (_, metadata) => { frameTime = metadata.mediaTime; video.requestVideoFrameCallback(onFrame); };
     video.requestVideoFrameCallback(onFrame);
@@ -700,6 +922,9 @@ async function main() {
     viewer.update();
     viewer.controls = controls;
     if (viewMode !== 'follow') cameraView.apply();
+    surfaceVisibility?.update(frameAt(time, data),currentPose,viewFootprint.mode,
+      loadedStatus === 'ready' && Boolean(currentScene) && overlay.hidden && viewer.splatRenderReady,
+      !video.seeking && video.readyState >= 2);
     if (!overlay.hidden || !viewer.splatRenderReady) return;
     viewer.render(); renderedOnce = true;
     if (viewMode !== 'follow' && currentPose) {

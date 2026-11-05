@@ -28,9 +28,11 @@ def test_room_publish_preserves_model_video_route_and_other_trials(tmp_path, mon
         env / "scene_playback_data.json": '{"trial_id":"RoomScan3c","labels_not_applicable":true}',
         env / "splat.ply": "preserved reconstruction",
         env / "aria_room_scan.mp4": "preserved video",
+        env / "quality_20261029/index.html": "preserved quality comparison",
         tmp_path / "runs/Ntrial3_labels.json": "preserved manual labels",
     }
     for path, text in preserved.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
     monkeypatch.setattr(room, "ENV", env)
     monkeypatch.setattr(player, "ROOT", tmp_path)
@@ -41,6 +43,9 @@ def test_room_publish_preserves_model_video_route_and_other_trials(tmp_path, mon
     assert "Nearby route" in page
     assert "Aria viewpoint" in page
     assert 'id="spatialPlot"' in page
+    assert 'id="figurePanel"' in page
+    assert 'id="roomView"' in page
+    assert (env / "scene_pose_figure.mjs").read_text() == (player.TEMPLATES / "scene_pose_figure.mjs").read_text()
     assert "Manual Labels</a>" not in page
     assert 'url=playback.html' in (env / "index.html").read_text()
     for path, text in preserved.items():

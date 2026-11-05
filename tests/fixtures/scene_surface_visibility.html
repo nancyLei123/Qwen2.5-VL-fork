@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Surface visibility GPU regression</title>
+<h1>Surface visibility GPU regression</h1>
+<p>Synthetic opaque fragments only. Not a validation of real-room geometry.</p>
+<pre id="results">Running...</pre>
+<div id="stage"></div><p id="status"></p>
+<script type="module">
+import * as THREE from '../../vendor/gaussian-viewer/node_modules/three/build/three.module.js';
+import {GaussianSurfaceVisibility} from '../../scripts/templates/scene_surface_visibility.mjs';
+const results=[];
+try {
+  const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});
+  renderer.setSize(512,512);renderer.setClearColor(0x000000,1);document.body.append(renderer.domElement);
+  const camera=new THREE.PerspectiveCamera(90,1,.05,15);
+  camera.position.set(3,0,0);camera.lookAt(0,0,-3);camera.updateMatrixWorld(true);
+  const geometry=new THREE.InstancedBufferGeometry().copy(new THREE.PlaneGeometry(2,2));
+  geometry.setAttribute('splatIndex',new THREE.InstancedBufferAttribute(new Uint32Array([0,1]),1));
+  geometry.instanceCount=2;
+  const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,
+    uniforms:{foregroundAlpha:{value:1}},vertexShader:`
+    attribute uint splatIndex;
+    varying vec4 vColor;
+    varying vec2 vPosition;
+    uniform float foregroundAlpha;
+    void main() {
+      bool foreground=splatIndex==1u;
+      vec3 splatCenter=vec3(0.0,0.0,foreground?-2.0:-4.0);
+      mat4 transformModelViewMatrix=modelViewMatrix;
+      vec4 viewCenter = transformModelViewMatrix * vec4(splatCenter, 1.0);
+      float radius=foreground?0.9:3.5;
+      gl_Position=projectionMatrix*(viewCenter+modelViewMatrix*vec4(position.xy*radius,0.0,0.0));
+      vPosition=position.xy;
+      vColor=vec4(vec3(0.45),foreground?foregroundAlpha:1.0);
+    }`,fragmentShader:`
+    varying vec4 vColor;
+    varying vec2 vPosition;
+    void main () {
+      float A=dot(vPosition,vPosition);
+      vec3 color=vColor.rgb;
+      float opacity=exp(-0.5*A)*vColor.a;
+      gl_FragColor = vec4(color.rgb, opacity);
+    }`});
+  const mesh=new THREE.Mesh(geometry,material);
+  mesh.getSceneCount=()=>1;mesh.getSplatCount=()=>2;mesh.frustumCulled=false;
+  const viewer={renderer,camera,splatMesh:mesh};
+  const data={trial_id:'RoomScan3c',provenance:{model_sha256:'fixture',graph_uid:'fixture'}};
+  const surface=new GaussianSurfaceVisibility(THREE,viewer,data,{stage:document.getElementById('stage'),status:document.getElementById('status')});
+  surface.install({trial_id:'RoomScan3c',model_sha256:'fixture',graph_uid:'fixture',frame_lut:[0,0],
+    camera:{model:'PINHOLE',width:512,height:512,fx:256,fy:256,cx:255.5,cy:255.5}});
+  const pose=[0,0,0,0,0,0,1];
+  function pixel(point) {
+    const p=new THREE.Vector3(...point).project(camera), out=new Uint8Array(4), gl=renderer.getContext();
+    gl.readPixels(Math.floor((p.x*.5+.5)*512),Math.floor((p.y*.5+.5)*512),1,1,gl.RGBA,gl.UNSIGNED_BYTE,out);
+    return [...out];
+  }
+  function render(mode,frame=0) {surface.update(frame,pose,mode,true,true);renderer.render(mesh,camera);}
+  function check(name,pass,evidence) {results.push({name,pass,evidence});if(!pass)throw new Error(name);}
+  const points={foreground:[0,0,-2],hiddenBackground:[1,0,-4],visibleBackground:[2.3,0,-4]};
+  render('off');const before=Object.fromEntries(Object.entries(points).map(([k,p])=>[k,pixel(p)]));
+  render('surface');const after=Object.fromEntries(Object.entries(points).map(([k,p])=>[k,pixel(p)]));
+  check('GPU shader linked',!surface.failed,document.getElementById('status').textContent);
+  const tinted=(k)=>after[k][1]-after[k][0]>25;
+  check('Foreground tinted',tinted('foreground'),{before:before.foreground,after:after.foreground});
+  check('Visible background tinted',tinted('visibleBackground'),{before:before.visibleBackground,after:after.visibleBackground});
+  check('Occluded background not tinted',!tinted('hiddenBackground'),{before:before.hiddenBackground,after:after.hiddenBackground});
+  check('Depth RGB24 decodes near 2 m',Math.abs((surface.pixels[(128*256+128)*4]*65536+surface.pixels[(128*256+128)*4+1]*256+surface.pixels[(128*256+128)*4+2])/16777215*12-2)<.001);
+  render('off');check('Off restores original pixels',Object.entries(points).every(([k,p])=>JSON.stringify(pixel(p))===JSON.stringify(before[k])));
+  material.uniforms.foregroundAlpha.value=.3;
+  // Isolate the foreground in the observer render; depth passes still contain both layers.
+  // Otherwise tinted background can show through a correctly untinted transparent foreground.
+  mesh.geometry.attributes.splatIndex.setX(0,1);mesh.geometry.attributes.splatIndex.needsUpdate=true;
+  mesh.geometry.instanceCount=1;
+  render('off');const uncertainBefore=pixel(points.foreground);
+  render('surface',1);
+  check('Conflicting opacity depths reject foreground',JSON.stringify(pixel(points.foreground))===JSON.stringify(uncertainBefore),
+    {before:uncertainBefore,after:pixel(points.foreground)});
+  document.getElementById('results').dataset.passed='true';
+} catch(error) {
+  results.push({error:error.message});document.getElementById('results').dataset.passed='false';
+}
+document.getElementById('results').textContent=JSON.stringify(results,null,2);
+</script>

@@ -1,0 +1,25 @@
+name: PD Insighter source checks
+on:
+  push:
+    branches: [pd-insighter/develop]
+  pull_request:
+    branches: [pd-insighter/develop]
+permissions:
+  contents: read
+jobs:
+  source-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -r docs/reproduction/requirements-dev.txt
+      - run: npm ci --prefix vendor/gaussian-viewer --ignore-scripts
+      - name: Data-free Python checks
+        run: python -m pytest tests/test_collaboration_setup.py tests/test_environment_navigation.py tests/test_downward_attachment.py tests/test_page_audio.py tests/test_registered_aria_only.py tests/test_trial_library.py
+      - name: Browser logic checks
+        run: node --test tests/*.mjs

@@ -76,7 +76,17 @@ def estimate_alignment_offset_s(trajectory_df: pd.DataFrame, eye_gaze_csv: Path 
 
 def load_sync_window(trial_id: str) -> tuple[float, float]:
     sync_path = RUNS_DIR / trial_id / "downward_sync" / "sync_suggestion.json"
+    session_path = RUNS_DIR / trial_id / "session_dashboard_manifest.json"
+    if session_path.exists():
+        session = load_json(session_path)
+        if session.get("downward_attachment"):
+            return 0.0, float(session["session_duration_s"])
     if not sync_path.exists():
+        session_path = RUNS_DIR / trial_id / "session_dashboard_manifest.json"
+        if session_path.exists():
+            session = load_json(session_path)
+            if session.get("media_mode") == "aria_only":
+                return 0.0, float(session["session_duration_s"])
         return 0.0, 0.0
     sync = load_json(sync_path)
     return float(sync.get("aria_trim_start_s", 0.0)), float(sync.get("shared_duration_s", 0.0))

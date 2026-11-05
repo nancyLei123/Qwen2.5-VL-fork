@@ -488,7 +488,7 @@ def build_frame_context_payload(
             video_path=downward_video,
             cache_dir=cache_root / "downward",
             frame_idx=frame_idx,
-        )
+        ) if manifest.get("media_mode") != "aria_only" else None
         aria_frame = ensure_frame_image(
             video_path=aria_video,
             cache_dir=cache_root / "aria",
@@ -499,7 +499,7 @@ def build_frame_context_payload(
                 "offset_frames": int(offset_frames),
                 "frame_idx": frame_idx,
                 "time_s": frame_time_s,
-                "downward_url": workspace_relative_url(downward_frame),
+                "downward_url": workspace_relative_url(downward_frame) if downward_frame else None,
                 "aria_url": workspace_relative_url(aria_frame),
             }
         )

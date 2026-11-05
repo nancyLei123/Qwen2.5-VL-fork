@@ -1,3 +1,12 @@
+export function disableViewerDebugOverlays(viewer, keyTarget) {
+  // The renderer's C/U shortcuts enable debug cones/planes, not recorded poses.
+  keyTarget.removeEventListener('keydown', viewer.keyDownListener);
+  viewer.showMeshCursor = false;
+  viewer.showControlPlane = false;
+  viewer.sceneHelper.setMeshCursorVisibility(false);
+  viewer.sceneHelper.setControlPlaneVisibility(false);
+}
+
 // OrbitControls owns the moving wearer-centered rig; click-to-look owns only
 // a viewing offset. Keeping these separate prevents each playback tick from
 // undoing a click or moving the orbit pivot onto a wall in the reconstruction.

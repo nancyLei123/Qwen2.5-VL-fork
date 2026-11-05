@@ -1,108 +1,88 @@
-# PD Insighter: Collaborator Quick Start
+# PD Insighter: Run and Develop the Three-Trial Demo
 
-**Goal: open the saved dashboard, videos, labels, and 3D scenes on your computer.**
-You do not need to rerun MPS, motion classification, or reconstruction training.
+Use **`pd-insighter/develop`**, not the upstream `main` branch or the older
+`PD-Insighter-Demo` repository. These instructions open saved results; no new MPS
+submission, motion analysis or GPU training is needed.
 
-## 1. Choose One Starting Point
+## 1. Download the Private Result Package
 
-| What you have | What to do |
-| --- | --- |
-| The complete OneDrive snapshot | Use its `workspace/` folder. Code and saved results are already included; GitHub is optional. |
-| Only GitHub code | Also download results/data from OneDrive. Code alone cannot display the recordings or trained scenes. |
-| A working dashboard, and you want to develop new code | Keep the OneDrive snapshot unchanged; use the GitHub branch in a separate working copy. |
+From the [Fuchs / Fuchs22 / Fuchs333 Shared Drive folder](https://drive.google.com/drive/folders/1r1Zq2lqtibt5cRs3-8nIVU-BDW_jY2Gk),
+download **`01_PD_Insighter_App_and_Results.zip`** once its upload is complete
+(expected size: 1,901,900,497 bytes). Unzip it completely. The extracted folder
+is `PD_Insighter_Fuchs_20261105`. Keep this unchanged as your reference copy.
+Access is restricted; a GitHub account or this link does not grant data access.
+The three `02_Raw_*.zip` files are optional for reprocessing, not viewing.
 
-[OneDrive snapshot](https://adminliveunc-my.sharepoint.com/my?id=%2Fpersonal%2Fjlei_ad_unc_edu%2FDocuments%2FPD_Insighter_Reproduction_20261101)
-is a **2026-11-01 snapshot**, not a live mirror. The GitHub branch
-[`pd-insighter/research-20261103`](https://github.com/nancyLei123/Qwen2.5-VL-fork/tree/pd-insighter/research-20261103)
-contains separately versioned code. New source templates do not automatically
-update older saved pages. Neither package is the older `PD-Insighter-Demo`.
+For viewing only, the package's own README and `start.py` are sufficient.
+For editing and exchanging code, continue below in a separate local workspace,
+outside cloud-synced folders. Budget approximately another 2 GB for the result copy.
 
-## 2. Keep the Folder Layout
+## 2. Clone Current Code
 
-Download files fully, not just cloud placeholders. Work in a local copy outside
-the shared sync folder, so annotation edits do not modify the shared baseline.
-
-```text
-workspace/
-  Qwen2.5-VL-fork/
-    scripts/
-    docs/reproduction/
-    vendor/gaussian-viewer/
-    runs/                       saved pages, labels, videos, and 3D models
-  VRS_Pre_Processing/           raw/MPS and extracted media, if downloaded
-  downward videos/             original downward media, if downloaded
-```
-
-For a **complete snapshot**, also keep `VERIFY_DOWNLOAD.py` and
-`SOURCE_SHA256.jsonl` next to `workspace/`. From that parent directory, run
-`python3 VERIFY_DOWNLOAD.py --size-only`, then `python3 VERIFY_DOWNLOAD.py`
-for the full checksum check. Use Python 3.11; on Windows use `py -3.11` instead
-of `python3`. Verify **before** changing paths or mixing in newer code. A partial
-download will report missing files; the full check reads about 449 GB.
-
-**GitHub alternative:** in a fresh `workspace/`, run:
+Install Git, Python 3.11 or newer, and Node.js 20+ with npm. In a new directory:
 
 ```bash
-git clone --branch pd-insighter/research-20261103 --single-branch https://github.com/nancyLei123/Qwen2.5-VL-fork.git Qwen2.5-VL-fork
+mkdir pd-workspace
+cd pd-workspace
+git clone --single-branch --branch pd-insighter/develop https://github.com/nancyLei123/Qwen2.5-VL-fork.git Qwen2.5-VL-fork
+cd Qwen2.5-VL-fork
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r docs/reproduction/requirements-dev.txt
+npm ci --prefix vendor/gaussian-viewer --ignore-scripts
 ```
 
-Or select that branch on GitHub, choose **Code > Download ZIP**, extract it, and
-rename the extracted folder to exactly `Qwen2.5-VL-fork` inside `workspace/`.
-Add OneDrive's `runs/` and needed sibling data directories in the layout above.
-Do not copy older OneDrive code over the newer GitHub code. For selected trials,
-use the [folder map](DATA_LOCATIONS.md); include shared `runs/` assets and the full
-trial folder, not just its HTML page. Some older pages reference extracted media.
+Windows PowerShell: replace the two environment commands with
+`py -3 -m venv .venv` and `.\.venv\Scripts\Activate.ps1`.
+Full Windows/Linux processing has not been certified; the viewer is intended to
+use the same layout across platforms. Training dependencies are separate.
 
-## 3. Install and Start
+## 3. Import Data Without Overwriting Code
 
-Install **Python 3.11** and **Node.js/npm**. Use a modern WebGL-capable browser.
-In Terminal, change to your local **`workspace/`** directory.
-
-On macOS/Linux:
+Replace `/path/to/PD_Insighter_Fuchs_20261105` with your extracted package path.
+Run from the cloned `Qwen2.5-VL-fork` directory:
 
 ```bash
-python3.11 -m venv .venvs/aria-reconstruction
-source .venvs/aria-reconstruction/bin/activate
+python docs/reproduction/import_fuchs_data.py --package "/path/to/PD_Insighter_Fuchs_20261105"
+python docs/reproduction/import_fuchs_data.py --package "/path/to/PD_Insighter_Fuchs_20261105" --apply
+python docs/reproduction/relocate_copy.py --root .. --data-only
+python docs/reproduction/relocate_copy.py --root .. --data-only --apply
 ```
 
-On Windows PowerShell, use these two lines instead:
+The first command previews the import. `--apply` verifies the package's per-file
+SHA-256 records and copies only `runs/`, including all three trials and shared
+assets. It does not copy old scripts over GitHub code. It refuses an existing
+`runs/`, so it cannot overwrite your annotations or results. On an interrupted
+copy, retain it and use a fresh clone rather than merging blindly. Relocation
+changes known paths only in your data copy, backs up changed text and skips
+manual annotation stores; it leaves tracked source unchanged.
 
-```powershell
-py -3.11 -m venv .venvs/aria-reconstruction
-.\.venvs\aria-reconstruction\Scripts\Activate.ps1
-```
+Do not run the package launcher to verify this new mixed code/data checkout;
+its snapshot checksums describe the unchanged ZIP, not newer Git commits.
 
-Then, on either platform:
+## 4. Run
 
 ```bash
-python -m pip install -r Qwen2.5-VL-fork/docs/reproduction/requirements-viewer.txt
-npm ci --prefix Qwen2.5-VL-fork/vendor/gaussian-viewer --ignore-scripts
-python Qwen2.5-VL-fork/docs/reproduction/relocate_copy.py --root .
+python scripts/pd_insighter_server.py --host 127.0.0.1 --port 8782
 ```
 
-The last line previews path changes. After reviewing them, apply them **only to
-your downloaded working copy**, then start the server:
+Open [the trial library](http://127.0.0.1:8782/Qwen2.5-VL-fork/runs/pd_insighter_trial_selector.html).
+Keep the terminal open. Use another port, such as 8797, if 8782 is occupied.
+Use Chrome or Edge with WebGL, not `file://`. Keep the server on localhost.
 
-```bash
-python Qwen2.5-VL-fork/docs/reproduction/relocate_copy.py --root . --apply
-python Qwen2.5-VL-fork/scripts/pd_insighter_server.py --host 127.0.0.1 --port 8782
-```
+Each trial has **Full Session / Manual Labels / Stride / Transitions /
+Parkinson Review / Environment**. Missing video, poses or scene coverage remain
+marked as missing. These are simulated movements and research estimates, not
+clinically validated measurements or reconstructed full-body motion.
 
-Open [PD Insighter](http://127.0.0.1:8782/Qwen2.5-VL-fork/runs/pd_insighter_trial_selector.html).
-Keep the terminal running. To reopen later, activate the same environment and
-run the server command again; installation and relocation are one-time steps.
+## 5. Work Together
 
-## 4. Know What This Reproduces
+See [CONTRIBUTING](../../CONTRIBUTING.md) for feature branches, pull requests,
+safe `git pull --ff-only`, and regenerating saved pages from edited templates.
+Git updates code, not ignored `runs/` or shared research data. Never copy snapshot
+scripts over this checkout after a pull. Do not commit videos, model files,
+coordinates, labels, private reports or credentials, even to a feature branch.
 
-- This opens **saved results**, not a fresh execution of every analysis algorithm.
-  Retraining/recomputation needs additional dependencies and the saved experiment
-  settings; see the [technical guide](../../PD_INSIGHTER.md).
-- Do not double-click HTML or substitute OneDrive URLs for local media paths.
-  OneDrive links are for downloading, not dashboard video streaming.
-- A missing page/video usually requires checking the download and folder paths.
-  For blank 3D, also check the npm installation, model files, and browser WebGL.
-  Explicit "No 3D coverage" intervals may be limitations of the saved results.
-- The instructions are based on the Mac research workspace. Full Windows/Linux
-  reproduction has not been certified; some historical tools use Mac-specific paths.
-- Keep the server on `127.0.0.1`. Share code and this guide publicly if desired,
-  but grant research-data access only to approved collaborators in OneDrive.
+For other trials, see the historical [data map](DATA_LOCATIONS.md). The November 1
+OneDrive package is a different baseline; do not assume it includes these newest
+trials. For raw-data reprocessing, see [REPROCESSING](../fuchs_handoff/REPROCESSING.md).

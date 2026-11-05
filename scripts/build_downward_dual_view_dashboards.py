@@ -1915,7 +1915,7 @@ def build_session_payload(
     model_segments: list[dict[str, Any]],
     time_spent_records: list[dict[str, Any]],
     output_dir: Path,
-    downward_session_video: Path,
+    downward_session_video: Path | None,
     aria_session_video: Path,
     clip_seconds: float,
     effective_duration_s: float,
@@ -2008,7 +2008,7 @@ def build_session_payload(
         "secondary_view_label": "Aria View",
         "audio_master_label": "Aria View",
         "trial_selector_href": relative_versioned_href(dashboard_path, RUNS_DIR / "pd_insighter_trial_selector.html"),
-        "downward_session_video_uri": relative_versioned_href(dashboard_path, downward_session_video),
+        "downward_session_video_uri": relative_versioned_href(dashboard_path, downward_session_video) if downward_session_video else "",
         "aria_session_video_uri": relative_versioned_href(dashboard_path, aria_session_video),
         "frame_context_api_url": f"/api/frame-context?trial_id={trial_id}",
         "time_spent_records": time_spent_records,
@@ -9184,11 +9184,23 @@ def build_trial(trial_id: str) -> bool:
     run_dir = RUNS_DIR / trial_id
     manifest_path = run_dir / "trial_manifest.json"
     sync_path = run_dir / "downward_sync" / "sync_suggestion.json"
-    if not manifest_path.exists() or not sync_path.exists():
+    if not manifest_path.exists():
         return False
 
     manifest = load_json(manifest_path)
-    sync_data = load_json(sync_path)
+    if manifest.get("downward_attachment"):
+        # These media were attached to an established Aria clock. The older
+        # overlap-trimming workflow would invalidate labels, strides and 3D poses.
+        from attach_downward_to_existing_trial import refresh_attached_views
+        refresh_attached_views(trial_id)
+        return True
+    aria_only = not sync_path.exists()
+    if aria_only and manifest.get("media_mode") != "aria_only":
+        return False
+    sync_data = load_json(sync_path) if not aria_only else {
+        "aria_audio": str(Path(manifest["extracted_media"]["video_mp4"]["path"]).parent / "audio_track.wav"),
+        "shared_duration_s": video_duration_s(Path(manifest["extracted_media"]["video_mp4"]["path"])),
+    }
     simulated = manifest.get("trial_type") == "parkinson_simulated"
     if not trial_id.startswith("Ntrial") and trial_id not in ADDITIONAL_NORMAL_TRIALS and not simulated:
         return False
@@ -9197,23 +9209,28 @@ def build_trial(trial_id: str) -> bool:
     trajectory_csv = Path(str(manifest["mps_outputs"]["closed_loop_trajectory_csv"]["path"]))
     eye_gaze_csv = Path(str(manifest["mps_outputs"]["eye_gaze_csv"]["path"]))
     vrs_json_path = Path(str(manifest["raw_data"]["vrs_json"]["path"]))
-    downward_video_path = Path(str(sync_data["downward_video"]))
+    downward_video_path = Path(str(sync_data["downward_video"])) if not aria_only else None
     aria_audio_path = Path(str(sync_data["aria_audio"]))
 
-    if not all(path.exists() for path in [extracted_video_path, trajectory_csv, vrs_json_path, downward_video_path, aria_audio_path]):
+    required = [extracted_video_path, trajectory_csv, vrs_json_path, aria_audio_path]
+    if downward_video_path:
+        required.append(downward_video_path)
+    if not all(path.exists() for path in required):
         return False
 
     ffmpeg_exe = resolve_ffmpeg_executable()
 
     clip_seconds = infer_clip_seconds(run_dir)
     extracted_video_fps, _, _, _ = load_video_info(extracted_video_path)
-    downward_video_fps, _, _, _ = load_video_info(downward_video_path)
+    downward_video_fps = load_video_info(downward_video_path)[0] if downward_video_path else extracted_video_fps
     aria_trim_start_s = quantize_time_to_frame(float(sync_data.get("aria_trim_start_s", 0.0)), extracted_video_fps)
     downward_trim_start_s = quantize_time_to_frame(float(sync_data.get("downward_trim_start_s", 0.0)), downward_video_fps)
     shared_duration_s = float(sync_data.get("shared_duration_s", 0.0))
     aria_available_duration_s = max(0.0, video_duration_s(extracted_video_path) - aria_trim_start_s)
-    downward_available_duration_s = max(0.0, video_duration_s(downward_video_path) - downward_trim_start_s)
-    if trial_id in ARIA_TAIL_EXTENDED_TRIALS:
+    downward_available_duration_s = max(0.0, video_duration_s(downward_video_path) - downward_trim_start_s) if downward_video_path else 0.0
+    if aria_only:
+        effective_duration_s = aria_available_duration_s
+    elif trial_id in ARIA_TAIL_EXTENDED_TRIALS:
         # Half_hour2 has a shorter downward recording. Keep the aligned start,
         # but let the clinician continue reviewing the remaining Aria session.
         effective_duration_s = floor_to_clip_duration(aria_available_duration_s, clip_seconds)
@@ -9241,7 +9258,7 @@ def build_trial(trial_id: str) -> bool:
             output_dir / "downward_session_video.build.json",
             trim_start_s=downward_trim_start_s,
             duration_s=min(effective_duration_s, downward_available_duration_s),
-        )
+        ) if downward_video_path else None
         aria_session_video = ensure_aria_session_video(
             ffmpeg_exe,
             extracted_video_path,
@@ -9292,7 +9309,7 @@ def build_trial(trial_id: str) -> bool:
             "session_duration_s": effective_duration_s,
             "recording_start_epoch_s": session_start_epoch_s,
             "session_start_tracking_us": session_start_tracking_us,
-            "downward_session_video_uri": "downward_master_session/downward_session_video.mp4",
+            "downward_session_video_uri": "downward_master_session/downward_session_video.mp4" if not aria_only else "",
             "aria_session_video_uri": "downward_master_session/aria_session_video.mp4",
         })
         continuous = load_continuous_motion_data(trial_id, effective_duration_s)
@@ -9318,7 +9335,7 @@ def build_trial(trial_id: str) -> bool:
     retired_clip_review_path.write_text(build_legacy_redirect_html(CANONICAL_TRIAL_ENTRY_NAME))
 
     time_spent_records = build_time_spent_records(clip_df, clip_seconds)
-    downward_session_duration_s = video_duration_s(downward_session_video)
+    downward_session_duration_s = video_duration_s(downward_session_video) if downward_session_video else 0.0
     aria_session_duration_s = video_duration_s(aria_session_video)
     session_fps, session_frame_count, _, _ = load_video_info(aria_session_video)
     transition_candidates = build_transition_candidates(
@@ -9353,8 +9370,9 @@ def build_trial(trial_id: str) -> bool:
     )
     session_payload["downward_session_duration_s"] = downward_session_duration_s
     session_payload["aria_session_duration_s"] = aria_session_duration_s
-    session_payload["shared_overlap_duration_s"] = floor_to_clip_duration(shared_duration_s, clip_seconds)
-    session_payload["time_information"] = load_or_build_time_information(trial_id, manifest, sync_data)
+    session_payload["shared_overlap_duration_s"] = floor_to_clip_duration(shared_duration_s, clip_seconds) if not aria_only else 0.0
+    session_payload["media_mode"] = "aria_only" if aria_only else "dual_view"
+    session_payload["time_information"] = load_or_build_time_information(trial_id, manifest, sync_data) if not aria_only else {"available": False}
     session_payload["full_session_href"] = CANONICAL_TRIAL_ENTRY_NAME
     session_payload["trial_type"] = manifest.get("trial_type", "unspecified")
     if session_start_tracking_us is not None:

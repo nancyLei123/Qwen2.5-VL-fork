@@ -2,7 +2,33 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/gaussian-viewer/node_modules/three/build/three.module.js';
 import {OrbitControls} from '../vendor/gaussian-viewer/node_modules/@mkkellogg/gaussian-splats-3d/build/gaussian-splats-3d.module.js';
-import {AnchoredCameraView, ViewTap} from '../scripts/templates/scene_camera_view.mjs';
+import {AnchoredCameraView, ViewTap, disableViewerDebugOverlays} from '../scripts/templates/scene_camera_view.mjs';
+
+test('debug cones stay disabled without removing playback keyboard controls', () => {
+  const target = new EventTarget();
+  const visible = {cursor: true, plane: true};
+  const viewer = {
+    showMeshCursor: true, showControlPlane: true,
+    sceneHelper: {
+      setMeshCursorVisibility(value) { visible.cursor = value; },
+      setControlPlaneVisibility(value) { visible.plane = value; },
+    },
+  };
+  viewer.keyDownListener = () => { viewer.showMeshCursor = viewer.showControlPlane = true; };
+  let playbackEvents = 0;
+  target.addEventListener('keydown', viewer.keyDownListener);
+  target.addEventListener('keydown', () => playbackEvents++);
+  disableViewerDebugOverlays(viewer, target);
+  for (const code of ['KeyC', 'KeyU', 'Space']) {
+    const event = new Event('keydown');
+    Object.defineProperty(event, 'code', {value: code});
+    target.dispatchEvent(event);
+  }
+  assert.deepEqual(visible, {cursor: false, plane: false});
+  assert.equal(viewer.showMeshCursor, false);
+  assert.equal(viewer.showControlPlane, false);
+  assert.equal(playbackEvents, 3);
+});
 
 function fixture() {
   const camera = new THREE.PerspectiveCamera(90, 1, .05, 300);

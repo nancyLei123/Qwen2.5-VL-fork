@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RoomScan3c demo: Method and scope</title><style>
+body{margin:0;background:#eef2e9;color:#1b2b22;font:17px/1.65 "Avenir Next","Gill Sans",sans-serif}
+main{max-width:900px;margin:40px auto;padding:32px;background:#fff;border:1px solid #dce5dc;border-radius:24px}
+h1,h2{line-height:1.2}a{color:#137759}img{width:100%;height:auto}.note{padding:18px;background:#fff7e5;border-left:4px solid #cf962b}
+code{overflow-wrap:anywhere}@media(max-width:600px){main{margin:10px;padding:20px}}
+</style><main><a href="index.html">Back to synchronized 3D demo</a><h1>One room, one joint model</h1>
+<p>This portable PD Insighter demo shows the preserved <strong>RoomScan3c kitchen-room reconstruction</strong>,
+with a 90-second synchronized video excerpt. It reproduces viewing an existing result, not training it from raw data.</p>
+<h2>Method</h2><p><a href="https://github.com/facebookresearch/projectaria_tools">Project Aria Tools</a>
+reads the original RGB images, timestamps, camera calibration and MPS outputs. Selected frames were rectified
+to upright, 90-degree pinhole images and aligned with the calibrated camera poses in one metric MPS world frame.
+The semi-dense point cloud initialized the scene.</p>
+<p>A single <a href="https://github.com/WebODM/OpenSplat">OpenSplat</a> model was trained across
+783 selected views from the approximately 24-minute room scan for 30,000 iterations on Apple MPS.
+People/phone foreground masks excluded unreliable moving-image regions from the background objective.
+The schedule starts at 704 pixels, then uses 1408 pixels; full training inputs are not in this mini package.</p>
+<p><a href="https://github.com/mkkellogg/GaussianSplats3D">GaussianSplats3D</a> and Three.js render the scene
+in the browser. PD Insighter synchronizes video frames, recorded camera positions/orientations and route navigation.
+The unchanged PLY is included; the web renderer uses SH2 appearance, while the offline trainer/evaluation uses SH3.</p>
+<h2>Included data and timing</h2><p>The review MP4 covers original exported video 390-480 seconds
+(frames 11,700-14,399), keeps all 2,700 frames at 30 fps and is compressed to 704 x 704.
+The demo timeline resets to zero. Original RGB capture-relative times, pose values and support flags are retained
+without interpolation. The complete static room model and measured room landmarks are included, but the displayed route
+contains only this excerpt.</p><p><a href="scene_playback_data.json">Playback poses and timestamps</a> ·
+<a href="spatial_overview_data.json">MPS landmark subset</a> · <a href="model_metadata.json">Model and camera metadata</a> ·
+<a href="PACKAGE_MANIFEST.json">SHA-256 manifest</a></p>
+<h2>Limitations</h2><p class="note">No action labels were generated for this dedicated room scan.
+The moving camera is represented by a marker and frustum, not a reconstructed body.
+Blur, holes and foreground remnants remain, especially on reflective, occluded and poorly observed surfaces.
+Model availability is not a surface-coverage score, metric-accuracy guarantee or clinical validation.</p>
+<h2>Existing held-out comparison</h2><p>Original validation panel from the room experiment, not a new test
+of this demo. Appearance agreement on held-out views does not establish independent geometry accuracy.</p>
+<img src="held_out_comparison.jpg" alt="Original held-out room reconstruction comparison">
+<h2>Reproduce or extend?</h2><p>For viewing: run <code>python3 start_demo.py</code>.
+For checking download integrity: <code>python3 start_demo.py --verify</code>.
+For retraining: request the full VRS/MPS, selected images, masks, split and processing scripts from the larger research package.</p>
+<p>Originals were not modified. Share research imagery only with authorized collaborators.
+Bundled libraries retain their licenses; Plotly's MIT notice remains in <code>spatial_plotly.min.js</code>.</p></main></html>

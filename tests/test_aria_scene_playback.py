@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -41,22 +42,25 @@ def test_frame_count_mismatch_fails_instead_of_stretching_time():
         MODULE.verify_frame_mapping(timestamps, metadata, {})
 
 
-def test_ui_only_publish_preserves_data_labels_and_models(tmp_path, monkeypatch):
+@pytest.mark.parametrize("trial", ["Ntrial3", "60minutes_1", "RoomScan3c", "Fuchs", "Fuchs22", "Fuchs333"])
+def test_ui_only_publish_preserves_data_labels_and_models(tmp_path, monkeypatch, trial):
     monkeypatch.setattr(MODULE, "ROOT", tmp_path)
-    output = tmp_path / "runs/Ntrial3/environment_reconstruction"
+    output = tmp_path / "runs" / trial / "environment_reconstruction"
     output.mkdir(parents=True)
     preserved = {
-        output / "scene_playback_data.json": '{"trial_id":"Ntrial3","poses":[null]}',
+        output / "scene_playback_data.json": json.dumps({"trial_id": trial, "poses": [None]}),
         output / "splat_7000.ply": "unchanged model",
         output.parent / "session_dashboard_manifest.json": "unchanged labels",
     }
     for path, content in preserved.items():
         path.write_text(content)
-    page = MODULE.publish_ui("Ntrial3")
-    assert "Ntrial3 | Synchronized 3D Playback" in page.read_text()
+    page = MODULE.publish_ui(trial)
+    assert f"{trial} | Synchronized 3D Playback" in page.read_text()
     assert "Click any timeline to play from that time" in page.read_text()
     assert 'id="viewAimStatus"' in page.read_text()
-    for filename in ("scene_playback.js", "scene_playback_core.mjs", "scene_camera_view.mjs", "scene_spatial_overview.mjs"):
+    for label in ("Around camera", "Nearby route", "Aria viewpoint", "Reset view", "High / Retina", "Balanced"):
+        assert label in page.read_text()
+    for filename in MODULE.PLAYER_MODULES:
         assert (output / filename).read_bytes() == (MODULE.TEMPLATES / filename).read_bytes()
     assert (output / "spatial_plotly.min.js").stat().st_size > 1_000_000
     assert 'id="spatialPlot"' in page.read_text()

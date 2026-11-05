@@ -1,13 +1,24 @@
-# PD Insighter: Code on GitHub, Data on OneDrive
+# PD Insighter: Code on GitHub, Data in Institutional Storage
 
-This branch preserves the research source as of 2026-11-03. It is separate from
-the older `PD-Insighter-Demo` repository. The matching data snapshot is
-`PD_Insighter_Reproduction_20261101`; code and data have separate version dates.
+`pd-insighter/develop` is the ongoing collaboration branch, with the application
+source updated through 2026-11-05. It is separate from the older
+`PD-Insighter-Demo` repository. The newest three-trial handoff is
+`PD_Insighter_Fuchs_20261105` in the PD Project Shared Drive. Code and data are
+versioned separately; the November 1 OneDrive snapshot is a historical baseline.
 
-For the shortest path to opening the saved dashboard, see the
-[Collaborator Quick Start](docs/reproduction/QUICK_START.md). A complete OneDrive
-download already contains snapshot code; cloning GitHub is an alternative, not
-a required extra step. Use GitHub for separately versioned ongoing development.
+Start with the [Collaborator Quick Start](docs/reproduction/QUICK_START.md) for the
+three Fuchs trials and [CONTRIBUTING](CONTRIBUTING.md) for bidirectional code updates.
+The data ZIP also contains snapshot code for stand-alone viewing; developers
+should import data only and use this Git branch as the source of code changes.
+
+## Latest Source
+
+The November 5 update includes paired/Aria-only trial handling, partial downward
+coverage, synchronized audio controls, the trial library, registered-trial
+reconstruction/playback, and current around-camera/route/body-display modules.
+Historical private method reports remain in the data handoffs, not this public
+code update. Private manual gait cues can be supplied with
+`build_room_gait_fusion.py --cues PATH`; they are not source fixtures.
 
 ## What Is Here
 
@@ -23,7 +34,11 @@ This branch does not add research videos, images, labels, trajectories, model
 weights, generated trial pages, private meeting reports, accounts, or environments.
 Existing upstream Qwen example assets remain in the repository history.
 
-## View Saved Results
+## Older or Other Trial Data
+
+For the newest Fuchs handoff, use the quick start above instead. The following
+layout also supports historical trial downloads; obtain data only after confirming
+its upload has completed and you have access.
 
 1. Clone this branch into a folder named **`Qwen2.5-VL-fork`**, inside a new local
    `workspace` directory. Keep this layout because the server uses sibling paths.
@@ -38,21 +53,21 @@ Existing upstream Qwen example assets remain in the repository history.
 From the new local `workspace/` directory:
 
 ```bash
-git clone --branch pd-insighter/research-20261103 --single-branch \
+git clone --branch pd-insighter/develop --single-branch \
   https://github.com/nancyLei123/Qwen2.5-VL-fork.git Qwen2.5-VL-fork
 # Download the selected data into the layout above before continuing.
 python3.11 -m venv .venvs/aria-reconstruction
 source .venvs/aria-reconstruction/bin/activate
 python -m pip install -r Qwen2.5-VL-fork/docs/reproduction/requirements-viewer.txt
 npm ci --prefix Qwen2.5-VL-fork/vendor/gaussian-viewer
-python Qwen2.5-VL-fork/docs/reproduction/relocate_copy.py --root "$PWD"
+python Qwen2.5-VL-fork/docs/reproduction/relocate_copy.py --root "$PWD" --data-only
 ```
 
 The last command is a dry run. Review it, then update legacy absolute paths in
 this **downloaded copy only** and start the local server:
 
 ```bash
-python Qwen2.5-VL-fork/docs/reproduction/relocate_copy.py --root "$PWD" --apply
+python Qwen2.5-VL-fork/docs/reproduction/relocate_copy.py --root "$PWD" --data-only --apply
 python Qwen2.5-VL-fork/scripts/pd_insighter_server.py --host 127.0.0.1 --port 8782
 ```
 
@@ -83,6 +98,8 @@ these locations. Preserve saved manual labels before rerunning any generator.
   `build_aria_scene_playback.py`.
 - Dedicated room workflow: `reconstruct_dedicated_room.py` and
   `build_room_scan_route_playback.py`.
+- Latest registered trials: `run_registered_reconstruction.py` and
+  `build_registered_scene_playback.py`. See the [reprocessing scope](docs/fuchs_handoff/REPROCESSING.md).
 
 Read each script's `--help` and the saved trial/experiment manifests before use.
 These are research workflows, not one universally interchangeable pipeline.
@@ -110,7 +127,7 @@ node --test tests/*.mjs
 ```
 
 Artifact-dependent tests may skip or fail when required trials are not downloaded.
-See [Release Verification](docs/reproduction/VALIDATION.md) for observed test results
+See [Release Verification](docs/reproduction/VALIDATION.md) for the November 3 test results
 and the known mismatch between the older `60minutes_1` page and today's template.
 Passing code tests is not clinical validation or a fresh GPU-training comparison.
 Ntrial10, Parki, and Parki2 are simulated-PD recordings. Stride/left-right measures

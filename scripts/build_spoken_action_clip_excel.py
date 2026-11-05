@@ -283,7 +283,11 @@ def discover_trial_paths(trial_id: str) -> dict[str, Path]:
 
 
 def discover_audio_window(trial_id: str, manifest: dict[str, Any], sync_json: Path, clip_rows: list[dict[str, str]]) -> tuple[Path, float, float]:
-    if sync_json.exists():
+    if manifest.get("downward_attachment"):
+        audio_path = Path(str(manifest["extracted_media"]["video_mp4"]["path"])).parent / "audio_track.wav"
+        trim_start_s = 0.0
+        duration_s = float(manifest["downward_attachment"]["session_duration_s"])
+    elif sync_json.exists():
         sync = load_json(sync_json)
         audio_path = Path(sync["aria_audio"])
         trim_start_s = float(sync.get("aria_trim_start_s", 0.0))

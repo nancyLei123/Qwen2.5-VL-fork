@@ -1,13 +1,19 @@
 # PD Insighter Research Code
 
-The `pd-insighter/research-20261103` branch contains the current PD Insighter
-analysis scripts, dashboard templates, tests, and supporting source code.
+The `pd-insighter/develop` branch is the ongoing PD Insighter collaboration branch,
+updated with the November 5, 2026 application source. It contains analysis scripts,
+dashboard templates, tests, and supporting source code.
 Recordings, annotations, saved results, and trained scenes remain in restricted
-OneDrive storage, not in this branch.
+institutional storage, not in this branch. The latest Fuchs/Fuchs22/Fuchs333
+handoff uses the PD Project Google Shared Drive; the older OneDrive snapshot
+remains a separate, dated baseline.
 
 **Start here:** [Collaborator quick start](docs/reproduction/QUICK_START.md) |
-[Technical setup](PD_INSIGHTER.md) |
-[OneDrive data locations](docs/reproduction/DATA_LOCATIONS.md).
+[Code collaboration](CONTRIBUTING.md) |
+[Technical setup](PD_INSIGHTER.md).
+
+Use GitHub for code changes and pull requests; download private results separately.
+The old `PD-Insighter-Demo` repository and `main` branch are not this application.
 
 The original Qwen README and attribution are preserved below. This research
 application uses additional components with their own licenses; see

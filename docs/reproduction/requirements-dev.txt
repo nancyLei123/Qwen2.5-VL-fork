@@ -1,0 +1,5 @@
+-r requirements-viewer.txt
+matplotlib>=3.8,<4
+Pillow>=10,<13
+plotly>=5.24,<7
+pytest>=8,<10

@@ -92,6 +92,10 @@ def refresh_trial(trial_id: str) -> bool:
         eye_gaze_path if eye_gaze_path and eye_gaze_path.exists() else None,
     )
     session_alignment_offset_s = alignment_offset_s - float(sync_data.get("aria_trim_start_s", 0.0))
+    if payload.get("session_start_tracking_us") is not None:
+        session_alignment_offset_s = (
+            float(trajectory_df["tracking_timestamp_us"].iloc[0]) - float(payload["session_start_tracking_us"])
+        ) / 1e6
     clip_df = pd.DataFrame(payload.get("clip_records") or [])
     transition_review = build_transition_review_data(
         trial_id,

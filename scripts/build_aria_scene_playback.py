@@ -15,9 +15,14 @@ from scipy.spatial.transform import Rotation
 
 from export_aria_gaussian_dataset import interpolate_pose, load_trajectory
 from aria_playback_pose_recovery import recover_short_gap, support_reason
+from pd_insighter_environment_navigation import inject_environment_navigation
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = Path(__file__).parent / "templates"
+PLAYER_MODULES = ("scene_playback.js", "scene_playback_core.mjs", "scene_playback_quality.mjs",
+                  "scene_route_navigation.mjs", "scene_camera_view.mjs", "scene_spatial_overview.mjs",
+                  "scene_pose_figure.mjs", "scene_gait_fusion.mjs", "scene_view_footprint.mjs",
+                  "scene_surface_visibility.mjs")
 
 
 def camera_pose(trajectory, capture_ns, camera, calibration_gap_ns):
@@ -78,6 +83,15 @@ def convert_segments(segments, offset, duration):
     return converted
 
 
+def publish_player_assets(output):
+    """Deploy the complete viewer bundle together, including its camera controls."""
+    for filename in PLAYER_MODULES:
+        shutil.copyfile(TEMPLATES / filename, output / filename)
+    # Local vendor asset: no CDN, research data upload, or reconstruction rerun.
+    from plotly.offline.offline import get_plotlyjs
+    (output / "spatial_plotly.min.js").write_text(get_plotlyjs())
+
+
 def publish_ui(trial_id):
     """Refresh player controls without recomputing or modifying research data."""
     if not re.fullmatch(r"[A-Za-z0-9_-]+", trial_id):
@@ -87,12 +101,9 @@ def publish_ui(trial_id):
     if payload["trial_id"] != trial_id:
         raise ValueError("Playback data belongs to a different trial.")
     template = (TEMPLATES / "pd_insighter_scene_playback.html").read_text()
-    (output / "playback.html").write_text(template.replace("__TRIAL_ID__", trial_id))
-    for filename in ("scene_playback.js", "scene_playback_core.mjs", "scene_playback_quality.mjs", "scene_route_navigation.mjs", "scene_camera_view.mjs", "scene_spatial_overview.mjs"):
-        shutil.copyfile(TEMPLATES / filename, output / filename)
-    # Local vendor asset: no CDN, research data upload, or reconstruction rerun.
-    from plotly.offline.offline import get_plotlyjs
-    (output / "spatial_plotly.min.js").write_text(get_plotlyjs())
+    document = inject_environment_navigation(template.replace("__TRIAL_ID__", trial_id), output.parent, output / "playback.html")
+    (output / "playback.html").write_text(document)
+    publish_player_assets(output)
     return output / "playback.html"
 
 

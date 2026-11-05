@@ -46,3 +46,37 @@ results and regenerating their interface are different operations.
   or compatibility with every OS/GPU.
 - Historical scripts still need platform-specific dependency/path configuration.
   Preserve annotations and work on a copy before regenerating trial pages.
+# Collaboration Update: 2026-11-05
+
+The ongoing source branch is `pd-insighter/develop`. The older verification
+record below remains historical, not a description of the newest handoff.
+
+Checks performed for the collaboration update:
+
+- Source-only export: Python suite **310 passed, 30 skipped**. Skips identify
+  missing private trial artifacts. Tests used the existing Python 3.11 research
+  environment on macOS; this is not a fresh-platform dependency certification.
+- JavaScript checks ran without private data, with artifact checks explicitly
+  skipped. The installed viewer dependencies were restored from the npm lockfile.
+- The data-only importer copied and SHA-256 verified **3,138 result files** from
+  the local Fuchs handoff into an isolated source checkout. It did not overwrite
+  source, use the live research `runs/`, or alter the original handoff.
+- Data-only path relocation left tracked source and manual annotation stores
+  untouched. UI-only regeneration for all three trials preserved hashes of all
+  **173 JSON, CSV, MP4 and PLY files** in the imported trial trees.
+- A temporary localhost server served all **18 trial pages** successfully and
+  supported byte-range video requests. The original server was not restarted.
+- All **184 supporting-source files** matched the previous supporting-source
+  manifest and their current originals; no supporting-source update was needed.
+- Staged publication was screened for large data and likely embedded secrets.
+  The sole secret-pattern match was upstream's literal `your_api_key` example,
+  already present in the parent README, not a credential. Private manual gait
+  cues and historical research reports remain outside this update.
+
+GitHub Actions runs a smaller data-free smoke suite plus browser logic checks.
+Its result must be checked independently of these local results. No fresh GPU
+training, clinical validation, full browser visual inspection, cloud-upload
+completion or cross-platform replication is claimed by this code release.
+
+---
+

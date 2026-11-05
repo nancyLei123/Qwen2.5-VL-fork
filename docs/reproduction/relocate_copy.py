@@ -24,7 +24,7 @@ def rewrite(text, destination):
     return text.replace(quote(ORIGINAL, safe=""), quote(destination, safe="")).replace(ORIGINAL, destination)
 
 
-def relocate(root: Path, apply=False):
+def relocate(root: Path, apply=False, data_only=False):
     root = root.resolve()
     if root == Path(ORIGINAL).resolve():
         raise ValueError("Refusing to modify the live original workspace. Extract a copy elsewhere.")
@@ -32,7 +32,9 @@ def relocate(root: Path, apply=False):
         raise ValueError("--root must point to the extracted workspace directory")
     rows = []
     backup = root / ".relocation_originals"
-    for folder in ("Qwen2.5-VL-fork", "VRS_Pre_Processing/scripts", "projectaria_tools/scripts", "scripts"):
+    folders = ("Qwen2.5-VL-fork/runs",) if data_only else (
+        "Qwen2.5-VL-fork", "VRS_Pre_Processing/scripts", "projectaria_tools/scripts", "scripts")
+    for folder in folders:
         for path in sorted((root / folder).rglob("*")):
             rel = path.relative_to(root)
             if rel.as_posix() == "Qwen2.5-VL-fork/docs/reproduction/relocate_copy.py":
@@ -62,8 +64,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--data-only", action="store_true",
+                        help="Rebase downloaded runs only; leave Git-tracked source unchanged.")
     args = parser.parse_args()
-    changed = relocate(args.root, args.apply)
+    changed = relocate(args.root, args.apply, args.data_only)
     print(f"{'Updated' if args.apply else 'Would update'} {len(changed)} text files; annotation files excluded.")
     for row in changed[:30]:
         print(row["path"])

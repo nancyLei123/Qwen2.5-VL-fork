@@ -196,6 +196,20 @@ def rotate_upright(
 
 
 def find_inputs(trial_id: str) -> dict[str, Path]:
+    manifest_path = Path(__file__).resolve().parents[1] / "runs" / trial_id / "trial_manifest.json"
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text())
+        trajectory = Path(manifest["mps_outputs"]["closed_loop_trajectory_csv"]["path"])
+        inputs = {
+            "vrs": Path(manifest["raw_data"]["vrs"]["path"]),
+            "trajectory": trajectory,
+            "calibration": trajectory.parent / "online_calibration.jsonl",
+            "points": trajectory.parent / "semidense_points.csv.gz",
+        }
+        for path in inputs.values():
+            if not path.is_file():
+                raise FileNotFoundError(path)
+        return inputs
     trial_root = DATA_ROOT / trial_id
     vrs_files = sorted(trial_root.glob("*.vrs"))
     trajectory_files = sorted(trial_root.glob("mps_*/slam/closed_loop_trajectory.csv"))

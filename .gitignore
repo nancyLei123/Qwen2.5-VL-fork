@@ -91,7 +91,7 @@ environment.yaml
 # Large directories to be cleaned up
 to_be_cleaned/
 
-# PD Insighter research data is distributed separately through restricted OneDrive.
+# PD Insighter research data is distributed through restricted institutional storage.
 /runs/
 /pd_insighter_demo/
 /render_*/
@@ -131,3 +131,8 @@ relocation_report.json
 /RAW_PARAMETER_PLOTS_EMAIL_DRAFT.md
 /storage_cleanup_audit_*
 /scripts/build_ntrial_progress_record_doc.py
+
+# Trial-specific human annotations are data, even when stored beside scripts.
+/scripts/room_gait_cues.json
+/deliverables/
+*.partial

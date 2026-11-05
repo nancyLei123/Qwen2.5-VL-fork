@@ -44,6 +44,7 @@ def parse_args() -> argparse.Namespace:
         help="Use 'auto' with a Metal/CUDA-enabled OpenSplat binary.",
     )
     parser.add_argument("--max-gaussians", type=int, default=200_000)
+    parser.add_argument("--require-gpu", action="store_true", help="Stop instead of silently falling back to CPU.")
     parser.add_argument("--sh-degree", type=int, default=1)
     parser.add_argument("--sh-degree-interval", type=int, default=100)
     parser.add_argument("--refine-every", type=int, default=500)
@@ -334,6 +335,10 @@ def main() -> None:
         for line in process.stdout:
             log.write(line)
             log.flush()
+            if args.require_gpu and line.startswith("Using CPU"):
+                process.terminate()
+                process.wait()
+                raise RuntimeError("GPU unavailable; stopped CPU fallback. Check GPU access before retrying.")
             step = re.match(r"Step (\d+):", line)
             if not step or int(step.group(1)) % 500 == 0:
                 print(line, end="", flush=True)

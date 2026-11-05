@@ -135,11 +135,11 @@ def export():
 
 def publish():
     page = publish_ui("RoomScan3c")
-    # The room scan has no motion-analysis pages; do not publish dead navigation links.
+    footprint_docs = ENV / "view_footprint"
+    footprint_docs.mkdir(exist_ok=True)
+    (footprint_docs / "README.md").write_text((Path(__file__).resolve().parents[1] / "docs/room_demo/CAMERA_VIEW_FOOTPRINT.md").read_text())
+    # The shared shell marks unavailable motion-analysis tabs as disabled.
     html = page.read_text()
-    begin = html.index('<div class="tabs">')
-    end = html.index('</div></nav>', begin)
-    html = html[:begin] + '<div class="tabs"><a href="../../pd_insighter_trial_selector.html">All trials</a><a class="active" href="playback.html">Route + 3D playback</a><a href="quality_20261029/index.html">Quality comparison</a>' + html[end:]
     html = html.replace('camera direction and actions at the same time.', 'position and viewing direction at the same time.')
     html = html.replace('Scene names describe the original export groups. The action bars above use the current dashboard labels with the correct time offset. Unsupported poses and untrained intervals are explicitly shown as gaps.',
         'This is the dedicated room scan. A single static model is shown along the recorded camera route. No action labels have been generated for it. Unsupported camera poses are explicitly marked.')
