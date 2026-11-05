@@ -1,5 +1,8 @@
 # Code Release Verification
 
+Latest checks: [November 5 collaboration update](#collaboration-update-2026-11-05).
+The following November 3 section is retained as a historical record.
+
 Source snapshot: 2026-11-03, branch `pd-insighter/research-20261103`.
 This is a source release, not a claim of complete clinical or cross-platform
 validation. No new reconstruction training was performed for this release.
@@ -46,10 +49,11 @@ results and regenerating their interface are different operations.
   or compatibility with every OS/GPU.
 - Historical scripts still need platform-specific dependency/path configuration.
   Preserve annotations and work on a copy before regenerating trial pages.
-# Collaboration Update: 2026-11-05
+
+## Collaboration Update: 2026-11-05
 
 The ongoing source branch is `pd-insighter/develop`. The older verification
-record below remains historical, not a description of the newest handoff.
+record above remains historical, not a description of the newest handoff.
 
 Checks performed for the collaboration update:
 
@@ -77,6 +81,3 @@ GitHub Actions runs a smaller data-free smoke suite plus browser logic checks.
 Its result must be checked independently of these local results. No fresh GPU
 training, clinical validation, full browser visual inspection, cloud-upload
 completion or cross-platform replication is claimed by this code release.
-
----
-
