@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 from typing import Any, Callable
 from pd_insighter_audio import inject_page_audio
+import symptom_annotation_navigation as symptoms
 
 
 RUNS_ROOT = Path(__file__).resolve().parents[1] / "runs"
@@ -21,6 +22,7 @@ VIEW_FILES = (
     "pd_insighter_stride_review.html",
     "pd_insighter_transition_review.html",
     "pd_insighter_parkinson_review.html",
+    symptoms.SYMPTOM_PAGE,
 )
 VIEW_TARGETS = {
     "full": ("Full Session", "index.html"),
@@ -218,7 +220,7 @@ def _shared_review_shell(document: str, trial_dir: Path, active_view: str, page_
     directories.update(p.parent.parent for p in trial_dir.parent.glob("*/environment_reconstruction/scene_playback_data.json"))
     directories.add(trial_dir)
     for source in sorted(directories):
-        target = environment_entry(source) if active_view == "environment" else source / VIEW_TARGETS[active_view][1]
+        target = environment_entry(source) if active_view == "environment" else source / symptoms.view_filename(active_view, VIEW_TARGETS)
         suffix = ""
         if target is None or not target.is_file() or (active_view != "environment" and _is_redirect_file(target)):
             target = source / "index.html"
@@ -266,12 +268,14 @@ def inject_environment_tab(document: str, trial_dir: Path, page_dir: Path | None
             r'<(?:a|span)\b[^>]*data-view="environment"[^>]*>.*?</(?:a|span)>',
             "", match.group(2), flags=re.DOTALL,
         )
-        contents = re.sub(r'<(?:a|span)\b[^>]*data-view="parkinson"[^>]*>.*?</(?:a|span)>', "", contents, flags=re.DOTALL).rstrip()
+        contents = re.sub(r'<(?:a|span)\b[^>]*data-view="parkinson"[^>]*>.*?</(?:a|span)>', "", contents, flags=re.DOTALL)
+        contents = symptoms.strip_tab(contents).rstrip()
         clinical_page = trial_dir / "pd_insighter_parkinson_review.html"
         if clinical_page.exists() or trial_dir.name in SIMULATED_TRIALS:
             href = html.escape(os.path.relpath(clinical_page, page_dir or trial_dir), quote=True)
             contents += ('\n        <span class="nav-tab active" data-view="parkinson" aria-current="page">Parkinson Review</span>'
                          if active_view == "parkinson" else f'\n        <a class="nav-tab" data-view="parkinson" href="{href}">Parkinson Review</a>')
+        contents += symptoms.symptom_tab(trial_dir, page_dir, active_view)
         return f"{match.group(1)}{contents.rstrip()}\n        {tab}\n      </div>"
 
     document = re.sub(
@@ -282,6 +286,7 @@ def inject_environment_tab(document: str, trial_dir: Path, page_dir: Path | None
                       '<span class="nav-tab active" aria-current="page"', document)
     if trial_dir.name == "Ntrial10":
         document = document.replace("/api/session-manual-segments", "/api/parkinson-manual-segments")
+    document = symptoms.add_session_time_link(document, trial_dir, active_view)
     return inject_page_audio(_shared_review_shell(document, trial_dir, active_view, page_dir), page_dir or trial_dir)
 
 
@@ -352,7 +357,8 @@ def refresh_navigation(trial_ids: list[str] | None = None) -> list[Path]:
             original = path.read_text()
             if _is_redirect(original):
                 continue
-            active = next((key for key, (_, filename) in VIEW_TARGETS.items() if filename == name), "full")
+            active = symptoms.SYMPTOM_VIEW if name == symptoms.SYMPTOM_PAGE else next(
+                (key for key, (_, filename) in VIEW_TARGETS.items() if filename == name), "full")
             updated = inject_environment_tab(original, directory, active_view=active)
             if updated != original:
                 path.write_text(updated)

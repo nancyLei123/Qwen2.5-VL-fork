@@ -136,3 +136,7 @@ relocation_report.json
 /scripts/room_gait_cues.json
 /deliverables/
 *.partial
+
+# Browser test output (may contain video frames).
+/tests/e2e/test-results/
+/tests/e2e/playwright-report/

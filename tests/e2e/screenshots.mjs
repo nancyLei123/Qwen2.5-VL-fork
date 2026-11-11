@@ -1,0 +1,56 @@
+// Captures review screenshots of the Symptom Annotation page from a running dev server.
+// Usage: node screenshots.mjs <outDir> [baseUrl]. Screenshots show research video, so keep
+// them out of git (they are written outside the repository by default).
+import {chromium} from '@playwright/test';
+import {mkdirSync} from 'node:fs';
+import path from 'node:path';
+
+const out = process.argv[2];
+const base = process.argv[3] || 'http://127.0.0.1:8791/Qwen2.5-VL-fork/runs/';
+if (!out) throw new Error('Pass an output folder.');
+mkdirSync(out, {recursive: true});
+const browser = await chromium.launch({args: ['--autoplay-policy=no-user-gesture-required']});
+const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
+page.on('console', message => { if (message.type() === 'error') console.log('console:', message.text()); });
+await page.goto(`${base}Parki/pd_insighter_symptom_annotation.html?t=128`);
+await page.waitForFunction(() => document.documentElement.dataset.saveState && document.documentElement.dataset.saveState !== 'pending', null, {timeout: 30_000});
+await page.waitForTimeout(1500);
+await page.screenshot({path: path.join(out, '1-page.png'), fullPage: true});
+await page.locator('.timeline-card').screenshot({path: path.join(out, '2-timeline.png')});
+const track = page.locator('#symptomTrack');
+const box = await track.boundingBox();
+await page.mouse.move(box.x + box.width * 0.62, box.y + 12);
+await page.mouse.down();
+await page.mouse.move(box.x + box.width * 0.78, box.y + 12, {steps: 8});
+await page.mouse.up();
+await page.waitForTimeout(400);
+await page.locator('.timeline-card').screenshot({path: path.join(out, '3-editor.png')});
+await page.keyboard.press('Escape');
+await page.locator('.list-card').scrollIntoViewIfNeeded();
+await page.locator('#annotationRows .row-menu-btn').nth(1).click();
+await page.waitForTimeout(200);
+await page.locator('.list-card').scrollIntoViewIfNeeded();
+await page.screenshot({path: path.join(out, '4-list.png')});
+await page.keyboard.press('Escape');
+await page.locator('#settingsBtn').click();
+await page.waitForTimeout(200);
+await page.screenshot({path: path.join(out, '5-settings.png'), clip: {x: 900, y: 0, width: 540, height: 520}});
+await page.keyboard.press('Escape');
+await page.locator('#manageLabelsBtn').click();
+await page.waitForTimeout(300);
+await page.locator('#labelDialog').screenshot({path: path.join(out, '6-labels.png')});
+await page.locator('#labelCancelBtn').click();
+await page.locator('#activitySource').selectOption('manual');
+await page.waitForTimeout(500);
+await page.locator('.timeline-card').screenshot({path: path.join(out, '7-activity-manual.png')});
+await page.locator('#activitySource').selectOption('hide');
+await page.waitForTimeout(300);
+await page.locator('.timeline-card').screenshot({path: path.join(out, '8-activity-hidden.png')});
+await page.locator('#activitySource').selectOption('automatic');
+await page.setViewportSize({width: 1280, height: 800});
+await page.reload();
+await page.waitForFunction(() => document.documentElement.dataset.saveState === 'saved');
+await page.waitForTimeout(1200);
+await page.screenshot({path: path.join(out, '9-1280x800.png')});
+await browser.close();
+console.log('saved to', out);

@@ -23,6 +23,8 @@ from build_spoken_action_clip_excel import (
     process_trial,
     update_manual_annotation,
 )
+import symptom_annotations
+import symptom_detection_store
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
@@ -35,6 +37,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="127.0.0.1", help="Bind host.")
     parser.add_argument("--port", type=int, default=8766, help="Bind port.")
+    parser.add_argument(
+        "--symptom-store",
+        type=Path,
+        default=None,
+        help="Folder for symptom labels and annotations (default: runs/). Tests use a temporary folder.",
+    )
     return parser.parse_args()
 
 
@@ -514,10 +522,54 @@ def build_frame_context_payload(
     }
 
 
+SYMPTOM_STORE = RUNS_DIR
+
+
+def symptom_session_duration(trial_id: str) -> float:
+    """Session length on the dashboard clock, from the trial's saved manifest."""
+    manifest = load_session_manifest(symptom_annotations.check_trial_id(trial_id))
+    return _coerce_float(manifest.get("session_duration_s"), "session_duration_s")
+
+
+def get_symptom_annotations(trial_id: str) -> dict[str, Any]:
+    return symptom_annotations.load_annotations(SYMPTOM_STORE, trial_id, symptom_session_duration(trial_id))
+
+
+def save_symptom_annotations(body: dict[str, Any]) -> dict[str, Any]:
+    trial_id = symptom_annotations.check_trial_id(body.get("trial_id"))
+    return symptom_annotations.save_annotations(
+        SYMPTOM_STORE, body, duration_s=symptom_session_duration(trial_id),
+        labels=symptom_annotations.load_labels(SYMPTOM_STORE),
+    )
+
+
+def get_symptom_detections(trial_id: str, run_id: str | None) -> dict[str, Any]:
+    """Saved automatic predictions and their review decisions. Read-only for the detector output."""
+    symptom_session_duration(trial_id)  # 404 for an unknown trial
+    return symptom_detection_store.bundle(SYMPTOM_STORE, trial_id, run_id)
+
+
 class PDInsighterHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._range: tuple[int, int] | None = None
         super().__init__(*args, directory=str(WORKSPACE_ROOT), **kwargs)
+
+    def _symptom_response(self, action: Any) -> None:
+        """Run a symptom-annotation request and map failures to clear HTTP errors."""
+        try:
+            payload = action()
+        except symptom_annotations.ConflictError as exc:
+            self._send_json({"error": str(exc), "conflict": True, "current": exc.current}, HTTPStatus.CONFLICT)
+        except symptom_annotations.ValidationError as exc:
+            self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+        except FileNotFoundError:
+            self._send_json({"error": "This trial has no session manifest."}, HTTPStatus.NOT_FOUND)
+        except json.JSONDecodeError:
+            self._send_json({"error": "The request body is not valid JSON."}, HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover - defensive
+            self._send_json({"error": f"Could not complete the request: {exc}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
+        else:
+            self._send_json(payload)
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -619,6 +671,18 @@ class PDInsighterHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if parsed.path == "/api/symptom-labels":
+            self._symptom_response(lambda: symptom_annotations.load_labels(SYMPTOM_STORE))
+            return
+        if parsed.path == "/api/symptom-annotations":
+            trial_id = parse_qs(parsed.query).get("trial_id", [""])[0]
+            self._symptom_response(lambda: get_symptom_annotations(trial_id))
+            return
+        if parsed.path == "/api/symptom-detections":
+            query = parse_qs(parsed.query)
+            trial_id, run_id = query.get("trial_id", [""])[0], query.get("run_id", [None])[0]
+            self._symptom_response(lambda: get_symptom_detections(trial_id, run_id))
+            return
         if parsed.path == "/api/manual-labels":
             query = parse_qs(parsed.query)
             trial_id = query.get("trial_id", [None])[0]
@@ -713,6 +777,15 @@ class PDInsighterHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if parsed.path == "/api/symptom-labels":
+            self._symptom_response(lambda: symptom_annotations.save_labels(SYMPTOM_STORE, self._read_json_body()))
+            return
+        if parsed.path == "/api/symptom-annotations":
+            self._symptom_response(lambda: save_symptom_annotations(self._read_json_body()))
+            return
+        if parsed.path == "/api/symptom-detection-reviews":
+            self._symptom_response(lambda: symptom_detection_store.save_review(SYMPTOM_STORE, self._read_json_body()))
+            return
         if parsed.path == "/api/manual-labels":
             try:
                 body = self._read_json_body()
@@ -777,6 +850,10 @@ class PDInsighterHandler(SimpleHTTPRequestHandler):
 
 def main() -> None:
     args = parse_args()
+    if args.symptom_store is not None:
+        global SYMPTOM_STORE
+        SYMPTOM_STORE = args.symptom_store.resolve()
+        print(f"Symptom annotations stored under {SYMPTOM_STORE}")
     server = ThreadingHTTPServer((args.host, args.port), PDInsighterHandler)
     print(f"Serving PD-Insighter with annotation API at http://{args.host}:{args.port}")
     server.serve_forever()
