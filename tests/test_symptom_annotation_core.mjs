@@ -5,6 +5,7 @@ import {
   unreviewedIntervals, nextUnreviewed, reviewedFraction, validateDraft, labelNameProblems, randomId, upsert,
   annotationsAt, tickStep,
 } from '../scripts/templates/symptom_annotation/symptom_annotation_core.mjs';
+import * as core from '../scripts/templates/symptom_annotation/symptom_annotation_core.mjs';
 
 const labels = [
   {id: 'simulated_symptom', name: 'Simulated Symptom', archived: false},
@@ -111,4 +112,63 @@ test('ids are stable-format and lists stay sorted by time', () => {
   assert.deepEqual(annotationsAt([a('x', 0, 10), a('y', 5, 15)], 7).map(item => item.id), ['x', 'y']);
   assert.equal(tickStep(30), 5);
   assert.equal(tickStep(490), 60);
+});
+
+// ---- automatic predictions --------------------------------------------------------------------
+
+const RUN = {run_id: 'motion-baseline-0.1.0-aaaaaaaa', detections: [
+  {id: 'slow_gait-00010000', label_id: 'slow_gait', start_s: 10, end_s: 20, score: 80, evidence_strength: 'high'},
+  {id: 'gait_hesitation-00012000', label_id: 'gait_hesitation', start_s: 12, end_s: 13, score: 35, evidence_strength: 'low'},
+  {id: 'freezing_like-00040000', label_id: 'freezing_like', start_s: 40, end_s: 44, score: 55, evidence_strength: 'medium'},
+]};
+const REVIEWS = {revision: 2, reviews: {[RUN.run_id]: {
+  'slow_gait-00010000': {decision: 'accepted', annotation_id: 'ann_one'},
+  'freezing_like-00040000': {decision: 'unreviewed', history: [{decision: 'rejected'}]},
+}}};
+
+test('review decisions are looked up per run and a cleared decision counts as undecided', () => {
+  assert.equal(core.reviewOf(REVIEWS, RUN.run_id, 'slow_gait-00010000').decision, 'accepted');
+  assert.equal(core.reviewOf(REVIEWS, RUN.run_id, 'freezing_like-00040000'), null);
+  assert.equal(core.reviewOf(REVIEWS, 'another-run', 'slow_gait-00010000'), null);
+  assert.equal(core.reviewOf(null, RUN.run_id, 'slow_gait-00010000'), null);
+  assert.deepEqual(core.predictionProgress(RUN, REVIEWS), {total: 3, accepted: 1, rejected: 0, needs_review: 0, unreviewed: 2});
+});
+
+test('low-evidence predictions can be hidden without changing the run', () => {
+  assert.deepEqual(core.shownPredictions(RUN).map(item => item.start_s), [10, 12, 40]);
+  assert.deepEqual(core.shownPredictions(RUN, {showLow: false}).map(item => item.id), ['slow_gait-00010000', 'freezing_like-00040000']);
+  assert.equal(RUN.detections.length, 3);
+  assert.deepEqual(core.shownPredictions(null), []);
+});
+
+test('stepping through predictions follows time order and wraps', () => {
+  const list = core.shownPredictions(RUN);
+  assert.equal(core.stepPrediction(list, null, 11, 1).id, 'gait_hesitation-00012000');
+  assert.equal(core.stepPrediction(list, null, 100, 1).id, 'slow_gait-00010000');
+  assert.equal(core.stepPrediction(list, null, 30, -1).id, 'gait_hesitation-00012000');
+  assert.equal(core.stepPrediction(list, 'freezing_like-00040000', 0, 1).id, 'slow_gait-00010000');
+  assert.equal(core.stepPrediction(list, 'slow_gait-00010000', 0, -1).id, 'freezing_like-00040000');
+  assert.equal(core.stepPrediction([], null, 0, 1), null);
+});
+
+test('accepting a prediction makes a manual annotation that names its origin and leaves the prediction alone', () => {
+  const prediction = RUN.detections[2];
+  const before = JSON.stringify(prediction);
+  const annotation = core.annotationFromPrediction(prediction, RUN.run_id, {id: 'ann_new', labelId: 'freezing_like', annotator: 'AB'});
+  assert.deepEqual(annotation, {id: 'ann_new', label_id: 'freezing_like', start_s: 40, end_s: 44, confidence: 'medium',
+    review_status: 'confirmed', notes: '', annotator: 'AB',
+    origin: {type: 'detection', run_id: RUN.run_id, detection_id: 'freezing_like-00040000', edited: false}});
+  assert.equal(JSON.stringify(prediction), before);
+  const edited = core.annotationFromPrediction(prediction, RUN.run_id, {id: 'ann_e', labelId: 'uncertain', start_s: 39.5, end_s: 45, edited: true});
+  assert.equal(edited.start_s, 39.5); assert.equal(edited.origin.edited, true);
+  assert.equal(core.annotationOfPrediction([annotation], RUN.run_id, prediction.id), annotation);
+  assert.equal(core.annotationOfPrediction([annotation], 'another-run', prediction.id), null);
+  assert.equal(core.annotationOfPrediction([{id: 'ann_manual', label_id: 'uncertain', start_s: 40, end_s: 44}], RUN.run_id, prediction.id), null);
+});
+
+test('a prediction label reuses the catalogue label with the same id or name', () => {
+  const labels = [{id: 'lbl_custom', name: 'Gait Hesitation', archived: false}, {id: 'slow_gait', name: 'Renamed', archived: false}];
+  assert.equal(core.matchingLabel(labels, {id: 'slow_gait', name: 'Slowed gait'}).id, 'slow_gait');
+  assert.equal(core.matchingLabel(labels, {id: 'gait_hesitation', name: 'Gait hesitation'}).id, 'lbl_custom');
+  assert.equal(core.matchingLabel(labels, {id: 'freezing_like', name: 'Freezing-like episode'}), null);
 });
