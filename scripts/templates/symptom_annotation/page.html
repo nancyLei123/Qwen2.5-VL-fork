@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>__TRIAL_ID__ - Symptom Annotation</title>
+  <link rel="stylesheet" href="symptom_annotation/symptom_annotation.css?v=__ASSET_VERSION__" />
+</head>
+<body>
+  <main class="shell">
+    <nav class="page-nav" aria-label="PD Insighter navigation">
+      <div class="nav-context">
+        <span class="nav-mark" aria-hidden="true">PD</span>
+        <div class="nav-location"><strong>__TRIAL_ID__</strong><span>Symptom Annotation</span></div>
+      </div>
+      <div class="nav-tabs" aria-label="Trial views">
+__NAV_TABS__
+      </div>
+      <label class="nav-trial-switcher" for="trialJumpSelect">
+        <span>Trial</span>
+        <select id="trialJumpSelect" class="nav-trial-select" aria-label="Switch trial or return to all trials"></select>
+      </label>
+    </nav>
+
+    <section class="card workspace" aria-label="Review">
+      <header class="page-head">
+        <div class="title">
+          <h1>Symptom Annotation</h1>
+          <span class="facts"><span id="durationFact"></span><span id="reviewedFact"></span></span>
+        </div>
+        <div class="head-actions">
+          <span id="saveStatus" class="save-status" role="status" aria-live="polite">Loading</span>
+          <button id="manageLabelsBtn" type="button">Labels</button>
+          <div class="menu" id="settingsMenu">
+            <button type="button" class="icon-btn" id="settingsBtn" aria-haspopup="true" aria-expanded="false" aria-controls="settingsPanel" title="Settings and shortcuts">&#8943;</button>
+            <div class="menu-panel settings-panel" id="settingsPanel" hidden>
+              <label class="menu-field" for="annotatorInput">Annotator <input id="annotatorInput" maxlength="60" placeholder="Initials" autocomplete="off" /></label>
+              <label class="menu-check"><input type="checkbox" id="followVideo" checked /> Follow video on the timeline</label>
+              <label class="menu-check"><input type="checkbox" id="dragFromPlayhead" /> Start selections at the playhead</label>
+              <div class="menu-sep"></div>
+              <div class="menu-title">Shortcuts</div>
+              <dl class="shortcuts">
+                <dt>Space</dt><dd>Play / pause</dd>
+                <dt>&larr; &rarr;</dt><dd>1 s (Shift: 5 s)</dd>
+                <dt>, .</dt><dd>One frame</dd>
+                <dt>I / O</dt><dd>Mark start / end</dd>
+                <dt>Enter</dt><dd>Save annotation</dd>
+                <dt>Esc</dt><dd>Cancel</dd>
+                <dt>N</dt><dd>Next unreviewed</dd>
+              </dl>
+              <div class="menu-sep"></div>
+              <p class="menu-note" id="syncDetails"></p>
+              <p class="menu-note">Times use the session clock shared with Full Session. Labels are provisional workflow categories, not diagnoses.</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="video-grid">
+        <figure class="video-panel" data-video="aria">
+          <div class="video-frame"><video id="ariaVideo" preload="auto" playsinline aria-label="Aria video"></video>
+            <span class="video-tag">Aria</span>
+            <button type="button" class="rotate-btn" data-rotate="aria" title="Rotate Aria view" aria-label="Rotate Aria view">&#10227;</button>
+            <div class="video-empty" hidden></div><div class="video-note" hidden></div></div>
+        </figure>
+        <figure class="video-panel" data-video="downward">
+          <div class="video-frame"><video id="downwardVideo" preload="auto" playsinline muted aria-label="Downward camera video"></video>
+            <span class="video-tag">Downward</span>
+            <button type="button" class="rotate-btn" data-rotate="downward" title="Rotate downward view" aria-label="Rotate downward view">&#10227;</button>
+            <div class="video-empty" hidden></div><div class="video-note" hidden></div></div>
+        </figure>
+      </div>
+
+      <div class="transport" role="toolbar" aria-label="Playback">
+        <div class="seg-group">
+          <button type="button" id="back5" title="Back 5 s">-5s</button>
+          <button type="button" id="backFrame" title="Previous frame (,)" aria-label="Previous frame">&lsaquo;</button>
+          <button type="button" id="playBtn" class="play" title="Play / pause (Space)">Play</button>
+          <button type="button" id="forwardFrame" title="Next frame (.)" aria-label="Next frame">&rsaquo;</button>
+          <button type="button" id="forward5" title="Forward 5 s">+5s</button>
+        </div>
+        <select id="speedSelect" aria-label="Playback speed" title="Playback speed">
+          <option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="1.5">1.5x</option><option value="2">2x</option>
+        </select>
+        <button type="button" id="audioToggle" hidden>Audio</button>
+        <span id="syncStatus" class="sync-dot" hidden></span>
+        <form id="gotoForm" class="clock" title="Click to go to a time">
+          <button type="button" id="clockBtn" class="clock-btn"><span id="clockNow">0:00.00</span></button>
+          <input id="gotoInput" aria-label="Go to time" placeholder="1:23.4" hidden />
+          <span class="clock-total">/ <span id="clockTotal">0:00.00</span></span>
+        </form>
+      </div>
+    </section>
+
+    <section class="card timeline-card" aria-label="Timeline">
+      <div class="timeline-bar">
+        <div class="bar-group">
+          <select id="windowSelect" aria-label="Visible time window" title="Visible time window"></select>
+          <div class="seg-group">
+            <button type="button" id="prevWindow" title="Previous window" aria-label="Previous window">&lsaquo;</button>
+            <button type="button" id="centerWindow" title="Center on video" aria-label="Center on video">Center</button>
+            <button type="button" id="nextWindow" title="Next window" aria-label="Next window">&rsaquo;</button>
+          </div>
+          <span id="windowLabel" class="window-label"></span>
+        </div>
+        <div class="bar-group">
+          <div class="seg-group">
+            <button type="button" id="markStart" title="Mark start at the playhead (I)">Start <kbd>I</kbd></button>
+            <button type="button" id="markEnd" title="Mark end at the playhead (O)">End <kbd>O</kbd></button>
+          </div>
+          <button type="button" id="nextUnreviewed" title="Jump to the next unreviewed time (N)">Next Unreviewed</button>
+        </div>
+      </div>
+
+      <div class="tracks">
+        <div class="track-row"><span class="row-label">Session</span><div id="overviewTrack" class="track overview" title="Click to move the timeline window"></div></div>
+        <div class="track-row" id="activityRow">
+          <label class="row-label" for="activitySource">Activity
+            <select id="activitySource" class="row-select" aria-label="Activity labels to show">
+              <option value="automatic">Automatic</option><option value="manual">Manual</option><option value="hide">Hide</option>
+            </select>
+          </label>
+          <div id="activityTrack" class="track activity-track"><span id="activityEmpty" class="track-empty" hidden></span></div>
+        </div>
+        <div class="track-row"><span class="row-label">Symptoms</span><div id="symptomTrack" class="track symptom-track" tabindex="0" aria-label="Symptom annotations. Drag to select a time range."></div></div>
+        <div id="axis" class="axis" aria-hidden="true"></div>
+      </div>
+      <div id="legend" class="legend"></div>
+
+      <form id="editorForm" class="editor" hidden novalidate aria-label="Annotation editor">
+        <div class="editor-row">
+          <span id="editorTitle" class="editor-title">New annotation</span>
+          <label class="inline-field">Start <input id="startInput" class="mono" /></label>
+          <button type="button" id="startFromPlayhead" class="link-btn" title="Use the playhead time">playhead</button>
+          <label class="inline-field">End <input id="endInput" class="mono" /></label>
+          <button type="button" id="endFromPlayhead" class="link-btn" title="Use the playhead time">playhead</button>
+          <span id="durationNote" class="duration-note"></span>
+        </div>
+        <div class="editor-row">
+          <div id="labelChoices" class="label-choices" role="group" aria-label="Label"></div>
+        </div>
+        <div class="editor-row">
+          <div id="confidenceChoices" class="segmented" role="group" aria-label="Confidence"></div>
+          <select id="statusSelect" aria-label="Review status"><option value="confirmed">Confirmed</option><option value="needs_review">Needs review</option></select>
+          <input id="notesInput" class="notes" maxlength="2000" placeholder="Notes (optional)" aria-label="Notes" />
+          <span class="spacer"></span>
+          <button type="button" id="deleteBtn" class="text-danger" hidden>Delete</button>
+          <button type="button" id="cancelBtn">Cancel</button>
+          <button type="submit" class="primary" id="saveBtn">Save</button>
+        </div>
+        <div id="formError" class="form-error" role="alert"></div>
+      </form>
+      <p id="editorEmpty" class="hint">Drag across Symptoms, or press <kbd>I</kbd> and <kbd>O</kbd> at the playhead, to mark an interval.</p>
+    </section>
+
+    <section class="card list-card" aria-label="Saved annotations">
+      <div class="list-head">
+        <h2>Annotations <span id="annotationCount" class="muted"></span></h2>
+        <select id="listFilter" aria-label="Filter annotations"></select>
+      </div>
+      <p id="listEmpty" class="hint">No annotations yet.</p>
+      <div class="table-wrap" id="tableWrap" hidden>
+        <table>
+          <thead><tr><th>Label</th><th>Start</th><th>End</th><th>Length</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody id="annotationRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="menu-panel row-menu" id="rowMenu" role="menu" hidden>
+    <button type="button" role="menuitem" data-action="edit">Edit</button>
+    <button type="button" role="menuitem" data-action="delete" class="text-danger">Delete</button>
+  </div>
+
+  <dialog id="labelDialog" aria-labelledby="labelDialogTitle">
+    <form method="dialog" id="labelForm">
+      <div class="dialog-body">
+        <div class="dialog-head"><h2 id="labelDialogTitle">Labels</h2><button type="button" id="addLabelBtn">Add Label</button></div>
+        <p class="muted small">Shared by all trials. Archived labels stay on saved annotations but are hidden for new ones.</p>
+        <div id="labelRows" class="label-rows"></div>
+      </div>
+      <div class="dialog-foot">
+        <span id="labelError" class="form-error" role="alert"></span>
+        <button type="button" id="labelCancelBtn">Cancel</button>
+        <button type="submit" class="primary" id="labelSaveBtn">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script id="symptomPageData" type="application/json">__PAYLOAD__</script>
+  <script type="module" src="symptom_annotation/symptom_annotation_app.mjs?v=__ASSET_VERSION__"></script>
+</body>
+</html>
