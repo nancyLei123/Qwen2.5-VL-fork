@@ -234,6 +234,40 @@ dialog::backdrop { background: rgba(23,35,28,.35); }
 .label-row.archived input[type="text"] { color: var(--muted); background: #f5f5f2; }
 .label-row .usage { font-size: 11px; color: var(--muted); font-weight: 800; }
 
+/* Automatic predictions: outlined and hatched, never a solid fill, so they cannot be mistaken for manual annotations. */
+.prediction-lane { position: absolute; left: 0; right: 0; top: 0; border-bottom: 1px dashed var(--line-strong); background: rgba(23,35,28,.025); pointer-events: none; }
+.prediction-lane::before { content: "AUTO"; position: absolute; right: 6px; top: 3px; font-size: 9px; font-weight: 950; letter-spacing: .08em; color: var(--muted); opacity: .7; }
+.prediction { position: absolute; height: 20px; border-radius: 6px; border: 1.5px dashed var(--pred, #555); color: var(--ink); cursor: pointer; overflow: hidden;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--pred, #555) 20%, #fff) 0 5px, #fff 5px 10px);
+  font-size: 11px; font-weight: 900; line-height: 17px; padding: 0 6px; white-space: nowrap; text-overflow: ellipsis; z-index: 3; min-width: 12px; }
+.prediction .score { font-weight: 800; color: var(--muted); margin-left: 5px; }
+.prediction .score.solo { margin-left: -2px; color: var(--ink); }
+.prediction[data-strength="low"] { opacity: .72; }
+.prediction[data-decision="accepted"] { border-style: solid; opacity: .55; }
+.prediction[data-decision="rejected"] { opacity: .38; text-decoration: line-through; background: #fff; }
+.prediction[data-decision="needs_review"] { border-color: var(--warn); }
+.prediction.active { border: 2px solid var(--ink); opacity: 1; box-shadow: 0 0 0 3px rgba(22,122,85,.2); z-index: 6; line-height: 16px; }
+.prediction-range { position: absolute; top: 0; bottom: 0; background: rgba(23,35,28,.07); border-left: 1.5px solid var(--ink); border-right: 1.5px solid var(--ink); pointer-events: none; z-index: 1; }
+.overview .seg.prediction-mark { top: 1px; height: 4px; border-radius: 2px; opacity: .85; }
+.swatch.predicted { border: 1.5px dashed var(--pred, #555); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--pred, #555) 25%, #fff) 0 3px, #fff 3px 6px); }
+.prediction-panel { border-style: dashed; border-color: var(--line-strong); background: #fff; }
+.pred-label { display: inline-flex; align-items: center; gap: 6px; font-weight: 900; }
+.pred-score { font-size: 12px; font-weight: 900; padding: 2px 9px; border-radius: 999px; background: #f1f3f1; color: var(--ink); white-space: nowrap; }
+.pred-score[data-strength="high"] { background: var(--green-soft); color: var(--green-dark); }
+.pred-score[data-strength="low"] { color: var(--muted); }
+.status-tag.accepted { background: var(--green-soft); color: var(--green-dark); }
+.status-tag.rejected { background: #fdf3f2; color: var(--danger); }
+.pred-summary { margin: 0; font-size: 13px; font-weight: 700; }
+.pred-evidence { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 12.5px; }
+.pred-evidence li { display: grid; grid-template-columns: 62px 104px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.pred-evidence .points { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; font-weight: 800; text-align: right; color: var(--green-dark); }
+.pred-evidence .source { font-size: 11px; font-weight: 800; color: var(--muted); }
+.pred-evidence li[data-kind="penalty"] .points { color: var(--danger); }
+.pred-evidence li[data-kind="missing"], .pred-evidence li[data-zero="1"] { color: var(--muted); }
+.pred-evidence li[data-kind="missing"] .points, .pred-evidence li[data-zero="1"] .points { color: var(--muted); }
+#predLimits { margin: 0; }
+.facts #predictionFact { color: var(--ink); }
+
 @media (max-width: 1100px) {
   .video-grid { grid-template-columns: 1fr 1fr; }
 }
@@ -244,6 +278,8 @@ dialog::backdrop { background: rgba(23,35,28,.35); }
   .track-row { grid-template-columns: 1fr; gap: 3px; }
   .row-label { display: flex; align-items: center; gap: 8px; }
   .axis, .legend, #editorEmpty { margin-left: 0; padding-left: 0; }
+  .pred-evidence li { grid-template-columns: 56px minmax(0, 1fr); }
+  .pred-evidence .source { display: none; }
   .clock { margin-left: 0; }
   .label-row { grid-template-columns: auto 1fr; }
 }

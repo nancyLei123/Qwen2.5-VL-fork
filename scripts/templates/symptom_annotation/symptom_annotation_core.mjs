@@ -158,3 +158,65 @@ export function annotationsAt(annotations, t) {
 export function tickStep(span) {
   return [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800].find(step => span / step <= 10) || 3600;
 }
+
+// ---- automatic predictions ----------------------------------------------------------------------
+// Predictions come from a detector run and are never edited here. A review decision is stored
+// separately; accepting one creates an ordinary manual annotation that remembers where it came from.
+
+export const SYMPTOM_LAYERS = ['both', 'manual', 'automatic'];
+export const DECISION_LABELS = {accepted: 'Accepted', rejected: 'Rejected', needs_review: 'Needs review'};
+export const STRENGTH_LABELS = {high: 'High', medium: 'Medium', low: 'Low'};
+
+/** The saved decision for one prediction, or null when it has not been decided (or was reset). */
+export function reviewOf(reviews, runId, detectionId) {
+  const entry = reviews?.reviews?.[runId]?.[detectionId];
+  return entry && entry.decision !== 'unreviewed' ? entry : null;
+}
+
+/** Predictions of a run to draw, in time order. Low-evidence ones can be left out. */
+export function shownPredictions(run, {showLow = true} = {}) {
+  const items = (run?.detections || []).filter(item => showLow || item.evidence_strength !== 'low');
+  return items.slice().sort((a, b) => a.start_s - b.start_s || a.end_s - b.end_s || a.id.localeCompare(b.id));
+}
+
+export function predictionProgress(run, reviews) {
+  const counts = {total: 0, accepted: 0, rejected: 0, needs_review: 0, unreviewed: 0};
+  for (const item of run?.detections || []) {
+    counts.total += 1;
+    counts[reviewOf(reviews, run.run_id, item.id)?.decision || 'unreviewed'] += 1;
+  }
+  return counts;
+}
+
+/** The neighbouring prediction in time order; from a time when none is selected. Wraps around. */
+export function stepPrediction(list, currentId, time, direction) {
+  if (!list.length) return null;
+  const index = list.findIndex(item => item.id === currentId);
+  if (index >= 0) return list[(index + direction + list.length) % list.length];
+  if (direction > 0) return list.find(item => item.start_s >= time - 1e-6) || list[0];
+  return [...list].reverse().find(item => item.end_s <= time + 1e-6) || list[list.length - 1];
+}
+
+/** The catalogue label to use for a prediction's label: same id, else same name; null when missing. */
+export function matchingLabel(labels, predictionLabel) {
+  const name = String(predictionLabel?.name || '').trim().toLowerCase();
+  return labels.find(label => label.id === predictionLabel?.id)
+    || labels.find(label => label.name.trim().toLowerCase() === name) || null;
+}
+
+/** A new manual annotation for an accepted prediction. The prediction itself is not changed. */
+export function annotationFromPrediction(prediction, runId, {id, labelId, start_s, end_s, annotator = '', edited = false}) {
+  return {
+    id, label_id: labelId,
+    start_s: start_s ?? prediction.start_s, end_s: end_s ?? prediction.end_s,
+    confidence: CONFIDENCE.includes(prediction.evidence_strength) ? prediction.evidence_strength : 'medium',
+    review_status: 'confirmed', notes: '', annotator,
+    origin: {type: 'detection', run_id: runId, detection_id: prediction.id, edited},
+  };
+}
+
+/** The annotation that was created from a prediction, if it still exists. */
+export function annotationOfPrediction(annotations, runId, detectionId) {
+  return annotations.find(item => item.origin?.type === 'detection'
+    && item.origin.run_id === runId && item.origin.detection_id === detectionId) || null;
+}

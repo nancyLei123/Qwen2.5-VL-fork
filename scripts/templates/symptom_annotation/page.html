@@ -26,7 +26,7 @@ __NAV_TABS__
       <header class="page-head">
         <div class="title">
           <h1>Symptom Annotation</h1>
-          <span class="facts"><span id="durationFact"></span><span id="reviewedFact"></span></span>
+          <span class="facts"><span id="durationFact"></span><span id="reviewedFact"></span><span id="predictionFact" hidden></span></span>
         </div>
         <div class="head-actions">
           <span id="saveStatus" class="save-status" role="status" aria-live="polite">Loading</span>
@@ -37,6 +37,13 @@ __NAV_TABS__
               <label class="menu-field" for="annotatorInput">Annotator <input id="annotatorInput" maxlength="60" placeholder="Initials" autocomplete="off" /></label>
               <label class="menu-check"><input type="checkbox" id="followVideo" checked /> Follow video on the timeline</label>
               <label class="menu-check"><input type="checkbox" id="dragFromPlayhead" /> Start selections at the playhead</label>
+              <div id="predictionSettings" hidden>
+                <div class="menu-sep"></div>
+                <div class="menu-title">Automatic predictions</div>
+                <label class="menu-check"><input type="checkbox" id="showLowPredictions" checked /> Show low-evidence predictions</label>
+                <label class="menu-field" for="predictionRun" id="predictionRunField" hidden>Detector run <select id="predictionRun"></select></label>
+                <p class="menu-note" id="predictionRunNote"></p>
+              </div>
               <div class="menu-sep"></div>
               <div class="menu-title">Shortcuts</div>
               <dl class="shortcuts">
@@ -47,6 +54,7 @@ __NAV_TABS__
                 <dt>Enter</dt><dd>Save annotation</dd>
                 <dt>Esc</dt><dd>Cancel</dd>
                 <dt>N</dt><dd>Next unreviewed</dd>
+                <dt>[ ]</dt><dd>Previous / next prediction</dd>
               </dl>
               <div class="menu-sep"></div>
               <p class="menu-note" id="syncDetails"></p>
@@ -122,7 +130,14 @@ __NAV_TABS__
           </label>
           <div id="activityTrack" class="track activity-track"><span id="activityEmpty" class="track-empty" hidden></span></div>
         </div>
-        <div class="track-row"><span class="row-label">Symptoms</span><div id="symptomTrack" class="track symptom-track" tabindex="0" aria-label="Symptom annotations. Drag to select a time range."></div></div>
+        <div class="track-row" id="symptomRow">
+          <label class="row-label" for="symptomLayers">Symptoms
+            <select id="symptomLayers" class="row-select" aria-label="Symptom layers to show" hidden>
+              <option value="both">Both</option><option value="manual">Manual</option><option value="automatic">Automatic</option>
+            </select>
+          </label>
+          <div id="symptomTrack" class="track symptom-track" tabindex="0" aria-label="Symptom annotations and automatic predictions. Drag to select a time range."></div>
+        </div>
         <div id="axis" class="axis" aria-hidden="true"></div>
       </div>
       <div id="legend" class="legend"></div>
@@ -150,6 +165,34 @@ __NAV_TABS__
         </div>
         <div id="formError" class="form-error" role="alert"></div>
       </form>
+      <section id="predictionPanel" class="editor prediction-panel" hidden aria-label="Automatic prediction">
+        <div class="editor-row">
+          <span class="editor-title">Automatic prediction</span>
+          <span id="predLabel" class="pred-label"></span>
+          <span id="predTime" class="mono"></span>
+          <span id="predScore" class="pred-score" title="Uncalibrated detection score from 0 to 100. It ranks the evidence; it is not a probability."></span>
+          <span id="predState" class="status-tag" hidden></span>
+          <span class="spacer"></span>
+          <div class="seg-group">
+            <button type="button" id="predPrev" title="Previous prediction ([)" aria-label="Previous prediction">&lsaquo;</button>
+            <button type="button" id="predNext" title="Next prediction (])" aria-label="Next prediction">&rsaquo;</button>
+          </div>
+          <button type="button" id="predClose" class="icon-btn" title="Close" aria-label="Close prediction">&times;</button>
+        </div>
+        <p id="predSummary" class="pred-summary"></p>
+        <ul id="predEvidence" class="pred-evidence" aria-label="Evidence"></ul>
+        <p id="predLimits" class="menu-note"></p>
+        <div class="editor-row">
+          <button type="button" id="predReplay" title="Play the interval with one second before and after">Replay</button>
+          <button type="button" id="predUndo" class="link-btn" hidden>Clear decision</button>
+          <span class="spacer"></span>
+          <button type="button" id="predLater" title="Leave for later">Needs review</button>
+          <button type="button" id="predReject" class="text-danger" title="Mark as incorrect. The prediction itself is kept.">Reject</button>
+          <button type="button" id="predEdit" title="Adjust the label or times, then save as an annotation">Edit</button>
+          <button type="button" id="predAccept" class="primary" title="Create an annotation with this label and time range">Accept</button>
+        </div>
+        <div id="predError" class="form-error" role="alert"></div>
+      </section>
       <p id="editorEmpty" class="hint">Drag across Symptoms, or press <kbd>I</kbd> and <kbd>O</kbd> at the playhead, to mark an interval.</p>
     </section>
 

@@ -1,9 +1,12 @@
 // Symptom Annotation page: synchronized video, timeline, editor, saved list and label manager.
-// Data: /api/symptom-labels (shared catalogue) and /api/symptom-annotations?trial_id=... .
+// Data: /api/symptom-labels (shared catalogue), /api/symptom-annotations?trial_id=... and, when a detector
+// run is saved for the trial, /api/symptom-detections?trial_id=... (read-only predictions + review decisions).
 import {
   WINDOW_SIZES, CONFIDENCE, REVIEW_STATUS, clamp, formatTime, parseTime, videoToSession, sessionToVideo,
   videoCovers, inCoverage, windowAround, shiftWindow, assignLanes, unreviewedIntervals, nextUnreviewed, reviewedFraction,
   validateDraft, labelNameProblems, randomId, upsert, tickStep,
+  SYMPTOM_LAYERS, DECISION_LABELS, STRENGTH_LABELS, reviewOf, shownPredictions, predictionProgress, stepPrediction,
+  matchingLabel, annotationFromPrediction, annotationOfPrediction,
 } from './symptom_annotation_core.mjs';
 
 const $ = id => document.getElementById(id);
@@ -12,6 +15,7 @@ const trialId = data.trial_id;
 const duration = Number(data.session_duration_s);
 const fps = Number(data.session_fps) || 30;
 const LANE_HEIGHT = 34;
+const PREDICTION_LANE_HEIGHT = 24;
 const SOFT_SYNC_S = 0.03;
 const HARD_SYNC_S = 0.15;
 const ACTIVITY_COLORS = {sitting: '#e6ab02', standing: '#7570b3', walking: '#d95f02', upstairs: '#1b9e77', downstairs: '#666666'};
@@ -29,6 +33,12 @@ const state = {
   playing: false,
   activitySource: 'automatic',  // automatic | manual | hide
   manualActivity: null,         // null = not loaded; {segments} or {error}
+  layers: 'both',               // both | manual | automatic (which symptom layers are drawn)
+  predictions: {runs: [], run: null, reviews: null},   // detector output is read-only here
+  predictionId: null,           // prediction shown in the review panel
+  acceptingId: null,            // prediction being adjusted in the editor before it is accepted
+  showLowPredictions: true,
+  playUntil: null,              // session time at which a replay stops
 };
 
 /** Activity segments for the chosen source, or null when that source has nothing to show. */
@@ -63,6 +73,16 @@ async function setActivitySource(source) {
   document.documentElement.dataset.activitySource = source;
   renderTimeline(); renderLegend();
 }
+
+// ---- automatic predictions: state helpers ------------------------------------------------------------
+
+const predictionRun = () => state.predictions.run;
+const predictionsOn = () => !!predictionRun() && state.layers !== 'manual';
+const manualOn = () => state.layers !== 'automatic';
+const predictionList = () => (predictionsOn() ? shownPredictions(predictionRun(), {showLow: state.showLowPredictions}) : []);
+const predictionById = id => (predictionRun()?.detections || []).find(item => item.id === id) || null;
+const predictionLabel = id => (predictionRun()?.labels || []).find(label => label.id === id) || {id, name: id, color: '#555555', description: ''};
+const decisionOf = id => reviewOf(state.predictions.reviews, predictionRun()?.run_id, id)?.decision || '';
 
 // ---- small helpers -----------------------------------------------------------------------------
 
@@ -226,7 +246,7 @@ async function play() {
   catch { setStatus('pending', 'Click Play again to start the video'); }
 }
 function pause() { if (master) master.el.pause(); }
-function togglePlay() { if (state.playing) pause(); else play(); }
+function togglePlay() { state.playUntil = null; if (state.playing) pause(); else play(); }
 function updatePlayButton() { $('playBtn').textContent = state.playing ? 'Pause' : 'Play'; }
 
 function seek(t) {
@@ -250,6 +270,7 @@ function startLoop() {
 }
 function tick() {
   state.time = sessionTime();
+  if (state.playUntil !== null && state.time >= state.playUntil) { state.playUntil = null; pause(); }
   if (state.playing) syncFollowers(false);
   if ($('followVideo').checked) keepInView(state.time);
   renderTime();
@@ -307,8 +328,10 @@ function renderTimeline() {
   overview.replaceChildren(
     ...activity_.map(seg => el('div', {class: 'seg activity', style: {
       left: fullPct(seg.start_s), width: `${(100 * (seg.end_s - seg.start_s)) / duration}%`, background: ACTIVITY_COLORS[seg.label] || '#9aa39d'}})),
-    ...state.annotations.map(item => el('div', {class: 'seg symptom', style: {
+    ...(manualOn() ? state.annotations : []).map(item => el('div', {class: 'seg symptom', style: {
       left: fullPct(item.start_s), width: `${(100 * (item.end_s - item.start_s)) / duration}%`, background: labelById(item.label_id)?.color || '#888'}})),
+    ...predictionList().map(item => el('div', {class: 'seg prediction-mark', style: {
+      left: fullPct(item.start_s), width: `${(100 * (item.end_s - item.start_s)) / duration}%`, background: predictionLabel(item.label_id).color}})),
     el('div', {class: 'overview-window', style: {left: fullPct(start), width: `${(100 * (end - start)) / duration}%`}}),
     playhead(true),
   );
@@ -331,21 +354,54 @@ function renderTimeline() {
   );
 
   const symptoms = $('symptomTrack');
-  const {lanes, count} = assignLanes(state.annotations);
-  symptoms.style.height = `${Math.max(46, count * LANE_HEIGHT + 12)}px`;
+  const showManual = manualOn();
+  const {lanes, count} = assignLanes(showManual ? state.annotations : []);
+  const predictions = predictionList();
+  const predictionLanes = assignLanes(predictions);
+  // The prediction lane keeps its height while predictions are shown, so the track does not jump while scrolling.
+  const lanesTop = predictionsOn() ? predictionLanes.count * PREDICTION_LANE_HEIGHT + 6 : 0;
+  symptoms.style.height = `${Math.max(46, lanesTop + (showManual ? count * LANE_HEIGHT : 0) + 12)}px`;
+  symptoms.dataset.layers = state.layers;
   const items = [];
-  for (const gap of unreviewedIntervals(state.annotations, duration)) {
+  const trackWidth = symptoms.clientWidth || 1000;
+  if (lanesTop) items.push(el('div', {class: 'prediction-lane', style: {height: `${lanesTop}px`}}));
+  const open = predictionsOn() ? predictionById(state.predictionId) : null;
+  if (open && open.end_s > start && open.start_s < end) {
+    const a = Math.max(open.start_s, start), b = Math.min(open.end_s, end);
+    items.push(el('div', {class: 'prediction-range', style: {left: pct(a), width: width(a, b)}}));
+  }
+  for (const item of predictions) {
+    if (item.end_s <= start || item.start_s >= end) continue;
+    const label = predictionLabel(item.label_id);
+    const decision = decisionOf(item.id);
+    const a = Math.max(item.start_s, start), b = Math.min(item.end_s, end);
+    const chip = el('div', {
+      class: `prediction${item.id === state.predictionId ? ' active' : ''}`,
+      dataset: {predictionId: item.id, strength: item.evidence_strength, decision},
+      title: `Automatic prediction: ${label.name}, ${formatTime(item.start_s)} - ${formatTime(item.end_s)}\n`
+        + `Score ${item.score} (uncalibrated), ${STRENGTH_LABELS[item.evidence_strength] || item.evidence_strength} evidence`
+        + (decision ? `\n${DECISION_LABELS[decision]}` : ''),
+      style: {left: pct(a), width: width(a, b), top: `${3 + predictionLanes.lanes.get(item.id) * PREDICTION_LANE_HEIGHT}px`},
+    });
+    const room = ((b - a) / span()) * trackWidth;
+    if (room >= 96) chip.append(label.name, el('span', {class: 'score'}, String(item.score)));
+    else if (room >= 28) chip.append(el('span', {class: 'score solo'}, String(item.score)));
+    chip.style.setProperty('--pred', label.color);
+    items.push(chip);
+  }
+  for (const gap of showManual ? unreviewedIntervals(state.annotations, duration) : []) {
     if (gap.end_s <= start || gap.start_s >= end) continue;
     const a = Math.max(gap.start_s, start), b = Math.min(gap.end_s, end);
-    items.push(el('div', {class: 'unreviewed', title: `Unreviewed: ${formatTime(gap.start_s)} - ${formatTime(gap.end_s)}`, style: {left: pct(a), width: width(a, b)}}));
+    items.push(el('div', {class: 'unreviewed', title: `Unreviewed: ${formatTime(gap.start_s)} - ${formatTime(gap.end_s)}`,
+      style: {left: pct(a), width: width(a, b), top: `${lanesTop}px`}}));
   }
-  for (const item of visibleAnnotations()) {
+  for (const item of showManual ? visibleAnnotations() : []) {
     const label = labelById(item.label_id);
     const a = Math.max(item.start_s, start), b = Math.min(item.end_s, end);
     items.push(el('div', {
       class: `annotation${item.id === state.editingId ? ' active' : ''}${item.review_status === 'needs_review' ? ' needs-review' : ''}`,
       dataset: {id: item.id}, title: `${label?.name || 'Unknown label'}: ${formatTime(item.start_s)} - ${formatTime(item.end_s)}${item.notes ? `\n${item.notes}` : ''}`,
-      style: {left: pct(a), width: width(a, b), top: `${6 + lanes.get(item.id) * LANE_HEIGHT}px`, background: label?.color || '#888'},
+      style: {left: pct(a), width: width(a, b), top: `${lanesTop + 6 + lanes.get(item.id) * LANE_HEIGHT}px`, background: label?.color || '#888'},
     }, label?.name || 'Unknown label'));
   }
   const range = state.selection || (state.editingId && state.draft ? state.draft : null);
@@ -375,16 +431,36 @@ function renderLegend() {
     ...shown.map(label => el('span', {class: 'item', title: label.description || ''},
       el('i', {class: 'swatch', style: {background: label.color}}), label.name + (label.archived ? ' (archived)' : ''))),
     el('span', {class: 'item'}, el('i', {class: 'swatch hatch'}), 'Unreviewed'),
+    ...predictionLegend(),
     ...(activityShown.size ? [el('span', {class: 'sep'}),
       ...Object.entries(ACTIVITY_COLORS).filter(([name]) => activityShown.has(name))
         .map(([name, color]) => el('span', {class: 'item'}, el('i', {class: 'swatch', style: {background: color}}), name))] : []),
   );
 }
 
+function predictionLegend() {
+  const used = new Set(predictionList().map(item => item.label_id));
+  if (!used.size) return [];
+  return [el('span', {class: 'sep'}), el('span', {class: 'item'}, 'Predicted:'),
+    ...(predictionRun().labels || []).filter(label => used.has(label.id)).map(label => {
+      const swatch = el('i', {class: 'swatch predicted'});
+      swatch.style.setProperty('--pred', label.color);
+      return el('span', {class: 'item', title: label.description || ''}, swatch, label.name);
+    })];
+}
+
 function renderSummary() {
   const reviewed = reviewedFraction(state.annotations, duration);
   $('reviewedFact').textContent = `${Math.round(reviewed * 100)}% reviewed`;
   $('annotationCount').textContent = state.annotations.length ? `(${state.annotations.length})` : '';
+  const run = predictionRun();
+  $('predictionFact').hidden = !run;
+  if (run) {
+    const progress = predictionProgress(run, state.predictions.reviews);
+    $('predictionFact').textContent = `${progress.total} prediction${progress.total === 1 ? '' : 's'}, ${progress.total - progress.unreviewed} decided`;
+    $('predictionFact').title = `Automatic predictions (${run.run_id}): ${progress.accepted} accepted, ${progress.rejected} rejected, `
+      + `${progress.needs_review} marked for review, ${progress.unreviewed} not decided. Time without a prediction is not marked symptom-free.`;
+  }
 }
 
 function renderList() {
@@ -441,6 +517,7 @@ function renderAll() {
   renderSummary();
   renderList();
   renderEditor();
+  renderPrediction();
 }
 
 // ---- editor ------------------------------------------------------------------------------------
@@ -452,7 +529,7 @@ function lastLabelId() {
 
 function beginSelection(startS, endS) {
   const a = clamp(Math.min(startS, endS), 0, duration), b = clamp(Math.max(startS, endS), 0, duration);
-  state.editingId = null;
+  state.editingId = null; state.acceptingId = null; state.predictionId = null;
   state.selection = {start_s: a, end_s: b};
   state.draft = {isNew: true, start_s: a, end_s: b, label_id: state.draft?.isNew ? state.draft.label_id : lastLabelId(),
     confidence: 'medium', review_status: 'confirmed', notes: ''};
@@ -463,7 +540,7 @@ function beginSelection(startS, endS) {
 function openAnnotation(id, seekTo) {
   const item = state.annotations.find(entry => entry.id === id);
   if (!item) return;
-  state.selection = null;
+  state.selection = null; state.acceptingId = null; state.predictionId = null;
   state.editingId = id;
   state.draft = {...item, isNew: false};
   state.dirty = false;
@@ -473,16 +550,17 @@ function openAnnotation(id, seekTo) {
 
 function closeEditor() {
   state.selection = null; state.editingId = null; state.draft = null; state.dirty = false;
+  state.acceptingId = null;
   $('formError').textContent = '';
-  renderTimeline(); renderList(); renderEditor();
+  renderTimeline(); renderList(); renderEditor(); renderPrediction();
   updateSaveState();
 }
 
 function renderEditor() {
   const draft = state.draft;
-  $('editorEmpty').hidden = !!draft || !!state.loadError;
+  $('editorEmpty').hidden = !!draft || !!state.loadError || !!state.predictionId;
   $('editorForm').hidden = !draft;
-  $('editorTitle').textContent = draft && !draft.isNew ? 'Edit annotation' : 'New annotation';
+  $('editorTitle').textContent = state.acceptingId ? 'Adjust prediction, then save' : draft && !draft.isNew ? 'Edit annotation' : 'New annotation';
   $('editorTitle').title = draft && !draft.isNew ? `Added ${new Date(draft.created_at).toLocaleString()}${draft.annotator ? ` by ${draft.annotator}` : ''}` : '';
   $('deleteBtn').hidden = !draft || draft.isNew;
   if (!draft) return;
@@ -583,10 +661,17 @@ async function saveDraft() {
   const id = draft.isNew ? randomId('ann') : draft.id;
   const item = {id, label_id: draft.label_id, start_s: draft.start_s, end_s: draft.end_s, confidence: draft.confidence,
     review_status: draft.review_status, notes: draft.notes.trim(), annotator: draft.annotator || annotator()};
-  const ok = await persist(upsert(state.annotations, item), draft.isNew ? 'Annotation saved' : 'Changes saved');
+  if (draft.origin) item.origin = draft.origin;
+  const accepting = state.acceptingId;
+  const ok = await persist(upsert(state.annotations, item), accepting ? 'Prediction accepted with changes' : draft.isNew ? 'Annotation saved' : 'Changes saved');
   if (!ok) return;
-  try { localStorage.setItem('pd-insighter-symptom-last-label', item.label_id); } catch { /* optional */ }
-  state.selection = null; state.editingId = null; state.draft = null; state.dirty = false;
+  if (!accepting) { try { localStorage.setItem('pd-insighter-symptom-last-label', item.label_id); } catch { /* optional */ } }
+  state.selection = null; state.editingId = null; state.draft = null; state.dirty = false; state.acceptingId = null;
+  if (accepting) {
+    state.predictionId = accepting;
+    await decide(accepting, 'accepted', {annotation_id: item.id, edited: true,
+      accepted: {label_id: item.label_id, start_s: item.start_s, end_s: item.end_s}});
+  }
   renderAll();
 }
 
@@ -598,6 +683,192 @@ async function deleteAnnotation(id) {
   const ok = await persist(state.annotations.filter(entry => entry.id !== id), 'Annotation deleted');
   if (!ok) { renderEditor(); return; }
   if (state.editingId === id) { state.editingId = null; state.draft = null; state.dirty = false; }
+  renderAll();
+}
+
+// ---- automatic predictions: review panel ----------------------------------------------------------
+
+function renderPrediction() {
+  const item = predictionsOn() && !state.draft ? predictionById(state.predictionId) : null;
+  $('predictionPanel').hidden = !item;
+  if (!item) return;
+  const label = predictionLabel(item.label_id);
+  const swatch = el('i', {class: 'swatch predicted'});
+  swatch.style.setProperty('--pred', label.color);
+  $('predLabel').replaceChildren(swatch, label.name);
+  $('predLabel').title = label.description || '';
+  $('predTime').textContent = `${formatTime(item.start_s)} - ${formatTime(item.end_s)} (${(item.end_s - item.start_s).toFixed(1)} s)`;
+  $('predScore').textContent = `Score ${item.score} \u00b7 ${STRENGTH_LABELS[item.evidence_strength] || item.evidence_strength} evidence`;
+  $('predScore').dataset.strength = item.evidence_strength;
+  const decision = decisionOf(item.id);
+  $('predState').hidden = !decision;
+  $('predState').className = `status-tag ${decision}`;
+  $('predState').textContent = DECISION_LABELS[decision] || '';
+  $('predSummary').textContent = item.summary || '';
+  const sources = predictionRun().source_labels || {};
+  $('predEvidence').replaceChildren(...(item.evidence || []).map(entry => el('li', {
+    dataset: {kind: entry.kind, zero: entry.kind === 'support' && !(entry.points > 0) ? '1' : '0'},
+  },
+    el('span', {class: 'points', title: entry.kind === 'penalty' ? 'Points taken off' : 'Points earned of the maximum for this item'},
+      entry.kind === 'missing' ? `n/a /${entry.max_points}` : entry.kind === 'penalty' ? `${entry.points}` : `+${entry.points}/${entry.max_points}`),
+    el('span', {class: 'source'}, sources[entry.source] || entry.source),
+    el('span', {}, entry.text))));
+  $('predLimits').textContent = (item.limitations || []).join(' ');
+  $('predUndo').hidden = !decision;
+  $('predAccept').disabled = decision === 'accepted';
+  $('predAccept').textContent = decision === 'accepted' ? 'Accepted' : 'Accept';
+  const accepted = annotationOfPrediction(state.annotations, predictionRun().run_id, item.id);
+  $('predEdit').textContent = accepted ? 'Edit annotation' : 'Edit';
+  document.documentElement.dataset.prediction = item.id;
+}
+
+function openPrediction(id, seekTo = true) {
+  const item = predictionById(id);
+  if (!item) return;
+  if (state.dirty && state.draft && !window.confirm('Discard the unsaved selection?')) return;
+  state.selection = null; state.editingId = null; state.draft = null; state.dirty = false; state.acceptingId = null;
+  state.predictionId = id;
+  state.playUntil = null;
+  $('predError').textContent = '';
+  if (seekTo) {
+    pause(); seek(item.start_s);
+    if (!(item.start_s >= state.view.start && item.end_s <= state.view.end)) setView(windowAround((item.start_s + item.end_s) / 2, span(), duration));
+  }
+  renderAll(); updateSaveState();
+  const panel = $('predictionPanel');
+  if (panel.getBoundingClientRect().bottom > window.innerHeight) panel.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+}
+
+function closePrediction() {
+  state.predictionId = null; state.playUntil = null;
+  delete document.documentElement.dataset.prediction;
+  renderAll();
+}
+
+function gotoPrediction(direction) {
+  const next = stepPrediction(predictionList(), state.predictionId, state.time, direction);
+  if (next) openPrediction(next.id, true);
+}
+
+function replayPrediction() {
+  const item = predictionById(state.predictionId);
+  if (!item) return;
+  seek(Math.max(0, item.start_s - 1));
+  state.playUntil = Math.min(duration, item.end_s + 1);
+  play();
+}
+
+/** Stores one review decision. The detector output is never changed by this. */
+async function decide(id, decision, extra = {}) {
+  const run = predictionRun();
+  if (!run) return false;
+  try {
+    state.predictions.reviews = await api('/api/symptom-detection-reviews', {method: 'POST', body: JSON.stringify({
+      trial_id: trialId, base_revision: state.predictions.reviews?.revision ?? 0, run_id: run.run_id,
+      detection_id: id, decision, reviewer: annotator(), ...extra,
+    })});
+    $('predError').textContent = '';
+    return true;
+  } catch (error) {
+    if (error.status === 409 && error.body?.current) {
+      state.predictions.reviews = error.body.current;
+      $('predError').textContent = 'Review decisions were changed in another window. They are reloaded now; choose again.';
+    } else $('predError').textContent = `Decision not saved: ${error.message}`;
+    return false;
+  }
+}
+
+async function setDecision(decision) {
+  const id = state.predictionId;
+  if (!id || state.saving) return;
+  await decide(id, decision);
+  renderAll();
+}
+
+/** Adds the prediction's label to the shared label catalogue when it is not there yet. */
+async function ensureLabel(wanted) {
+  const existing = matchingLabel(state.labels, wanted);
+  if (existing) return existing;
+  try {
+    const document_ = await api('/api/symptom-labels', {method: 'POST', body: JSON.stringify({
+      base_revision: state.labelsRevision,
+      labels: [...state.labels.map(({created_at, updated_at, ...label}) => label),
+        {id: wanted.id, name: wanted.name, color: wanted.color, description: wanted.description || '', archived: false}],
+    })});
+    state.labels = document_.labels; state.labelsRevision = document_.revision;
+    return matchingLabel(state.labels, wanted);
+  } catch (error) {
+    $('predError').textContent = error.status === 409 ? 'Labels were changed elsewhere. Reload the page and try again.' : `Label not added: ${error.message}`;
+    return null;
+  }
+}
+
+async function acceptPrediction() {
+  const item = predictionById(state.predictionId);
+  const run = predictionRun();
+  if (!item || !run || state.saving) return;
+  let annotation = annotationOfPrediction(state.annotations, run.run_id, item.id);
+  if (!annotation) {
+    const label = await ensureLabel(predictionLabel(item.label_id));
+    if (!label) return;
+    annotation = annotationFromPrediction(item, run.run_id, {id: randomId('ann'), labelId: label.id, annotator: annotator()});
+    if (!await persist(upsert(state.annotations, annotation), 'Prediction accepted')) {
+      $('predError').textContent = $('formError').textContent; $('formError').textContent = '';
+      return;
+    }
+  }
+  await decide(item.id, 'accepted', {annotation_id: annotation.id, edited: !!annotation.origin?.edited,
+    accepted: {label_id: annotation.label_id, start_s: annotation.start_s, end_s: annotation.end_s}});
+  renderAll();
+}
+
+/** Opens the normal editor with the prediction's label and times; saving accepts it with the changes. */
+async function editPrediction() {
+  const item = predictionById(state.predictionId);
+  const run = predictionRun();
+  if (!item || !run) return;
+  const existing = annotationOfPrediction(state.annotations, run.run_id, item.id);
+  if (existing) { openAnnotation(existing.id, false); return; }
+  const label = await ensureLabel(predictionLabel(item.label_id));
+  if (!label) return;
+  const draft = annotationFromPrediction(item, run.run_id, {id: '', labelId: label.id, annotator: annotator(), edited: true});
+  state.editingId = null;
+  state.selection = {start_s: draft.start_s, end_s: draft.end_s};
+  state.draft = {...draft, isNew: true};
+  state.acceptingId = item.id;
+  state.dirty = true;
+  renderAll(); revealEditor();
+}
+
+async function loadPredictions(runId = null) {
+  try {
+    const query = `trial_id=${encodeURIComponent(trialId)}${runId ? `&run_id=${encodeURIComponent(runId)}` : ''}`;
+    const body = await api(`/api/symptom-detections?${query}`);
+    state.predictions = {runs: body.runs || [], run: body.run || null, reviews: body.reviews || null};
+  } catch {
+    state.predictions = {runs: [], run: null, reviews: null};   // older server or nothing saved: page works without predictions
+  }
+  const run = predictionRun();
+  $('symptomLayers').hidden = !run;
+  $('predictionSettings').hidden = !run;
+  document.documentElement.dataset.predictions = run ? String(run.detections.length) : 'none';
+  if (!run) return;
+  const select = $('predictionRun');
+  select.replaceChildren(...state.predictions.runs.map(item => el('option', {value: item.run_id, selected: item.run_id === run.run_id},
+    `${item.run_id} (${item.count})`)));
+  $('predictionRunField').hidden = state.predictions.runs.length < 2;
+  const generated = run.generated_at ? new Date(run.generated_at).toLocaleString() : 'unknown time';
+  $('predictionRunNote').textContent = `${run.detector?.name || 'Detector'} ${run.detector?.version || ''}, run ${generated}. `
+    + 'Predictions are candidates for review. Scores are uncalibrated and are not probabilities. '
+    + (run.summary?.notes || []).slice(2).join(' ');
+}
+
+function setLayers(value) {
+  state.layers = SYMPTOM_LAYERS.includes(value) ? value : 'both';
+  $('symptomLayers').value = state.layers;
+  try { localStorage.setItem('pd-insighter-symptom-layers', state.layers); } catch { /* optional */ }
+  document.documentElement.dataset.symptomLayers = state.layers;
+  if (state.layers === 'manual') state.predictionId = null;
   renderAll();
 }
 
@@ -669,8 +940,10 @@ function bindTrack(track) {
   track.addEventListener('pointerdown', event => {
     if (event.button !== 0) return;
     const hit = event.target.closest('.annotation');
+    const prediction = event.target.closest('.prediction');
     const t = timeAt(event, track);
-    drag = {id: event.pointerId, x: event.clientX, start: $('dragFromPlayhead').checked ? state.time : t, hitId: hit?.dataset.id || null, moved: false};
+    drag = {id: event.pointerId, x: event.clientX, start: $('dragFromPlayhead').checked ? state.time : t, hitId: hit?.dataset.id || null,
+      predictionId: prediction?.dataset.predictionId || null, moved: false};
     track.setPointerCapture(event.pointerId);
     event.preventDefault();
   });
@@ -689,6 +962,7 @@ function bindTrack(track) {
     if (event.type === 'pointercancel') { renderTimeline(); return; }
     const t = timeAt(event, track);
     if (current.moved && Math.abs(t - current.start) >= 0.05) { beginSelection(current.start, t); return; }
+    if (current.predictionId) { openPrediction(current.predictionId, true); return; }
     if (current.hitId) { openAnnotation(current.hitId, false); seek(t); return; }
     state.selection = state.draft?.isNew ? state.selection : null;
     seek(t);
@@ -715,6 +989,7 @@ function bindKeys() {
     if (event.key === 'Escape' && (!$('rowMenu').hidden || !$('settingsPanel').hidden)) { event.preventDefault(); closeMenus(); return; }
     if (event.key === 'Escape' && !$('gotoInput').hidden) { event.preventDefault(); closeGoto(); return; }
     if (event.key === 'Escape' && state.draft) { event.preventDefault(); closeEditor(); return; }
+    if (event.key === 'Escape' && state.predictionId) { event.preventDefault(); closePrediction(); return; }
     if (event.key === 'Enter' && state.draft && !event.target?.closest?.('#gotoForm, #settingsPanel') && event.target?.tagName !== 'BUTTON' && event.target?.tagName !== 'SELECT') {
       event.preventDefault(); saveDraft(); return;
     }
@@ -726,6 +1001,7 @@ function bindKeys() {
     else if (key === 'i') { event.preventDefault(); markBoundary('start_s'); }
     else if (key === 'o') { event.preventDefault(); markBoundary('end_s'); }
     else if (key === 'n') { event.preventDefault(); jumpToUnreviewed(); }
+    else if ((key === '[' || key === ']') && predictionsOn()) { event.preventDefault(); gotoPrediction(key === ']' ? 1 : -1); }
   }, true);
 }
 
@@ -784,6 +1060,7 @@ async function load() {
     const [labels, annotations] = await Promise.all([
       api('/api/symptom-labels'),
       api(`/api/symptom-annotations?trial_id=${encodeURIComponent(trialId)}`),
+      loadPredictions(),
     ]);
     state.labels = labels.labels; state.labelsRevision = labels.revision;
     state.annotations = annotations.annotations; state.revision = annotations.revision;
@@ -870,6 +1147,31 @@ function init() {
   $('statusSelect').addEventListener('change', () => { state.draft.review_status = $('statusSelect').value; state.dirty = true; updateSaveState(); });
   $('notesInput').addEventListener('input', () => { state.draft.notes = $('notesInput').value; state.dirty = true; updateSaveState(); });
   $('listFilter').addEventListener('change', renderList);
+
+  let savedLayers = 'both';
+  try { savedLayers = localStorage.getItem('pd-insighter-symptom-layers') || 'both'; } catch { /* optional */ }
+  state.layers = SYMPTOM_LAYERS.includes(savedLayers) ? savedLayers : 'both';
+  $('symptomLayers').value = state.layers;
+  document.documentElement.dataset.symptomLayers = state.layers;
+  $('symptomLayers').addEventListener('change', () => setLayers($('symptomLayers').value));
+  try { state.showLowPredictions = localStorage.getItem('pd-insighter-symptom-show-low') !== '0'; } catch { /* optional */ }
+  $('showLowPredictions').checked = state.showLowPredictions;
+  $('showLowPredictions').addEventListener('change', () => {
+    state.showLowPredictions = $('showLowPredictions').checked;
+    try { localStorage.setItem('pd-insighter-symptom-show-low', state.showLowPredictions ? '1' : '0'); } catch { /* optional */ }
+    if (state.predictionId && !predictionList().some(item => item.id === state.predictionId)) state.predictionId = null;
+    renderAll();
+  });
+  $('predictionRun').addEventListener('change', async () => { state.predictionId = null; await loadPredictions($('predictionRun').value); renderAll(); });
+  $('predClose').addEventListener('click', closePrediction);
+  $('predPrev').addEventListener('click', () => gotoPrediction(-1));
+  $('predNext').addEventListener('click', () => gotoPrediction(1));
+  $('predReplay').addEventListener('click', replayPrediction);
+  $('predAccept').addEventListener('click', acceptPrediction);
+  $('predEdit').addEventListener('click', editPrediction);
+  $('predReject').addEventListener('click', () => setDecision('rejected'));
+  $('predLater').addEventListener('click', () => setDecision('needs_review'));
+  $('predUndo').addEventListener('click', () => setDecision('unreviewed'));
 
   $('manageLabelsBtn').addEventListener('click', openLabelDialog);
   $('addLabelBtn').addEventListener('click', addLabel);
