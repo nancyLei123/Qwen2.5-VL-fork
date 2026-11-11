@@ -10,6 +10,10 @@ the whole session, the activity row (automatic segments, manual activity labels 
 hidden), the symptom track and a table of saved annotations. Times are dashboard
 session time, the same clock as Full Session and Manual Labels.
 
+When a detector run is saved for a trial, the Symptoms track also shows automatic predictions
+that can be accepted, edited or rejected. Predictions and review decisions are stored apart from
+the manual annotations. See [DETECTION.md](DETECTION.md).
+
 ## Add the view to an installation
 
 The page is generated per trial from the trial's saved manifests, like the other views.
@@ -61,7 +65,10 @@ By default under `runs/`, which git ignores:
 - `runs/symptom_annotation_labels.json`: the label set shared by all trials
   (`pd-insighter/symptom-labels@1`);
 - `runs/<trial>/symptom_annotations/annotations.json`: one file per trial
-  (`pd-insighter/symptom-annotations@1`).
+  (`pd-insighter/symptom-annotations@1`);
+- `runs/<trial>/symptom_annotations/detections/` and `detection_reviews.json`: automatic
+  predictions and my decisions on them, described in [DETECTION.md](DETECTION.md). They never
+  change `annotations.json`.
 
 Each save is checked against the stored revision, so two open tabs cannot silently
 overwrite each other (the second gets a conflict and reloads). Writes are atomic and keep
@@ -88,6 +95,8 @@ Served by `scripts/pd_insighter_server.py`:
 
 Errors: 400 invalid data, 404 unknown trial, 409 revision conflict.
 
+The two prediction endpoints are listed in [DETECTION.md](DETECTION.md).
+
 ## Files
 
 - `scripts/symptom_annotation_navigation.py`: the tab, trial-switcher and session-time
@@ -96,17 +105,20 @@ Errors: 400 invalid data, 404 unknown trial, 409 revision conflict.
 - `scripts/update_symptom_annotation_pages.py`: the install/update script above.
 - `scripts/symptom_annotations.py`: storage and validation.
 - `scripts/templates/symptom_annotation/`: page template, CSS and JavaScript.
+- `scripts/symptom_detection*.py`, `scripts/run_symptom_detection.py`,
+  `scripts/evaluate_symptom_detection.py`: the automatic detector (see DETECTION.md).
 
 ## Tests
 
 ```bash
-python -m pytest tests/test_symptom_annotations.py
+python -m pytest tests/test_symptom_annotations.py tests/test_symptom_detection.py
 node --test tests/test_symptom_annotation_core.mjs
 ```
 
-These need no trial data. The browser tests need a dual-view trial in `runs/` (default
-`Parki`). They build two synthetic trials from it, one with attached downward footage
-and one Aria-only, and run the server on port 8792 with a temporary annotation store:
+These need no trial data; the detector tests run on generated head tracks. The browser tests
+need a dual-view trial in `runs/` (default `Parki`). They build three synthetic trials from it
+(attached downward footage, Aria-only, and one with a hand-written set of predictions) and run
+the server on port 8792 with a temporary annotation store:
 
 ```bash
 cd tests/e2e
