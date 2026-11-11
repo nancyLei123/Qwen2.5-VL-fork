@@ -12,6 +12,7 @@ from urllib.parse import quote
 import warnings
 
 from pd_insighter_environment_navigation import environment_entry, SIMULATED_TRIALS
+from symptom_annotation_navigation import SYMPTOM_PAGE
 
 QWEN_REPO = Path(__file__).resolve().parents[1]
 RUNS_DIR = QWEN_REPO / "runs"
@@ -35,6 +36,7 @@ VIEW_FILES = {
     "stride_review_href": ("Stride", "pd_insighter_stride_review.html"),
     "transition_review_href": ("Transitions", "pd_insighter_transition_review.html"),
     "parkinson_review_href": ("Parkinson Review", "pd_insighter_parkinson_review.html"),
+    "symptom_annotation_href": ("Symptom Annotation", SYMPTOM_PAGE),
 }
 
 
