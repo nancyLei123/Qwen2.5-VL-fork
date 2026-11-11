@@ -82,9 +82,9 @@ Served by `scripts/pd_insighter_server.py`:
 | Method | Path | Body / query |
 | --- | --- | --- |
 | GET | `/api/symptom-labels` | |
-| POST | `/api/symptom-labels` | `{"revision": n, "labels": [...]}` |
-| GET | `/api/symptom-annotations?trial=NAME` | |
-| POST | `/api/symptom-annotations?trial=NAME` | `{"revision": n, "annotations": [...]}` |
+| POST | `/api/symptom-labels` | `{"base_revision": n, "labels": [...]}` |
+| GET | `/api/symptom-annotations?trial_id=NAME` | |
+| POST | `/api/symptom-annotations` | `{"trial_id": "NAME", "base_revision": n, "annotator": "...", "annotations": [...]}` |
 
 Errors: 400 invalid data, 404 unknown trial, 409 revision conflict.
 
