@@ -24,6 +24,7 @@ from build_spoken_action_clip_excel import (
     update_manual_annotation,
 )
 import symptom_annotations
+import symptom_detection_store
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
@@ -542,6 +543,12 @@ def save_symptom_annotations(body: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def get_symptom_detections(trial_id: str, run_id: str | None) -> dict[str, Any]:
+    """Saved automatic predictions and their review decisions. Read-only for the detector output."""
+    symptom_session_duration(trial_id)  # 404 for an unknown trial
+    return symptom_detection_store.bundle(SYMPTOM_STORE, trial_id, run_id)
+
+
 class PDInsighterHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._range: tuple[int, int] | None = None
@@ -671,6 +678,11 @@ class PDInsighterHandler(SimpleHTTPRequestHandler):
             trial_id = parse_qs(parsed.query).get("trial_id", [""])[0]
             self._symptom_response(lambda: get_symptom_annotations(trial_id))
             return
+        if parsed.path == "/api/symptom-detections":
+            query = parse_qs(parsed.query)
+            trial_id, run_id = query.get("trial_id", [""])[0], query.get("run_id", [None])[0]
+            self._symptom_response(lambda: get_symptom_detections(trial_id, run_id))
+            return
         if parsed.path == "/api/manual-labels":
             query = parse_qs(parsed.query)
             trial_id = query.get("trial_id", [None])[0]
@@ -770,6 +782,9 @@ class PDInsighterHandler(SimpleHTTPRequestHandler):
             return
         if parsed.path == "/api/symptom-annotations":
             self._symptom_response(lambda: save_symptom_annotations(self._read_json_body()))
+            return
+        if parsed.path == "/api/symptom-detection-reviews":
+            self._symptom_response(lambda: symptom_detection_store.save_review(SYMPTOM_STORE, self._read_json_body()))
             return
         if parsed.path == "/api/manual-labels":
             try:

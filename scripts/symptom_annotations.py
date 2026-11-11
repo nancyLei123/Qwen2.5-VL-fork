@@ -16,8 +16,10 @@ rejected (``ConflictError``) instead of overwriting newer work. Files are writte
 (temporary file, fsync, rename) and the previous version is kept as ``*.bak``; if the main file
 is unreadable, the backup is loaded and the response says so.
 
-Automated detections, when they exist, belong in ``runs/<trial>/symptom_annotations/detections/``
-with ``source`` set to the detector; they are never written into ``annotations.json``.
+Automatic predictions live in ``runs/<trial>/symptom_annotations/detections/`` and review
+decisions in ``detection_reviews.json`` (see ``symptom_detection_store.py``); they are never
+written into ``annotations.json``. An annotation created by accepting a prediction is still a
+manual annotation (``source: manual``); it only carries an ``origin`` that names the prediction.
 """
 
 from __future__ import annotations
@@ -233,6 +235,18 @@ def _seconds(value: Any, field: str) -> float:
     return number
 
 
+def _origin(value: Any, where: str) -> dict[str, Any] | None:
+    """Optional link to the automatic prediction an annotation was accepted from."""
+    if value in (None, ""):
+        return None
+    if not isinstance(value, dict) or value.get("type") != "detection":
+        raise ValidationError(f"{where}: origin must describe a detection.")
+    run_id, detection_id = str(value.get("run_id") or ""), str(value.get("detection_id") or "")
+    if not 3 <= len(run_id) <= 100 or not 3 <= len(detection_id) <= 120:
+        raise ValidationError(f"{where}: origin needs a run ID and a prediction ID.")
+    return {"type": "detection", "run_id": run_id, "detection_id": detection_id, "edited": bool(value.get("edited"))}
+
+
 def validate_annotations(raw: Any, *, trial_id: str, duration_s: float, label_ids: set[str],
                          previous: dict[str, Any] | None = None, annotator: str = "") -> list[dict[str, Any]]:
     """Clean submitted annotations. Times keep their precision (rounded to 1 microsecond);
@@ -278,6 +292,9 @@ def validate_annotations(raw: Any, *, trial_id: str, duration_s: float, label_id
                                "annotator", 60),
             "source": SOURCE_MANUAL,
         }
+        origin = _origin(item.get("origin") if "origin" in item else (before or {}).get("origin"), where)
+        if origin:
+            entry["origin"] = origin
         changed = before is None or any(before.get(k) != entry[k] for k in
                                         ("label_id", "start_s", "end_s", "confidence", "review_status", "notes"))
         entry["created_at"] = (before or {}).get("created_at") or stamp
